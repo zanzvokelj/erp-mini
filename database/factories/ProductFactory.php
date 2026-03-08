@@ -4,21 +4,19 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Supplier;
+
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Product>
  */
 class ProductFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'supplier_id' => Supplier::inRandomOrder()->first()->id,
+            'supplier_id' => Supplier::factory(),
+
             'sku' => strtoupper(fake()->unique()->bothify('SKU-#####')),
+
             'name' => fake()->randomElement([
                 'Desk Lamp',
                 'Office Chair',
@@ -41,10 +39,15 @@ class ProductFactory extends Factory
                 'USB Hub',
                 'Laptop Cooling Pad'
             ]),
+
             'description' => fake()->sentence(),
+
             'price' => fake()->randomFloat(2,10,500),
+
             'cost_price' => fake()->randomFloat(2,5,300),
+
             'min_stock' => fake()->numberBetween(5,50),
+
             'is_active' => true
         ];
     }
