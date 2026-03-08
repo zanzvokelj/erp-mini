@@ -10,6 +10,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\PurchaseOrderController;
 
 
 Route::get('/', function () {
@@ -64,6 +65,14 @@ Route::post('/orders/{order}/cancel',[OrderController::class,'cancel'])
     ->name('orders.cancel');
 
 
+Route::post('/purchase-orders/{po}/items',
+    [PurchaseOrderController::class,'addItem']
+)->name('purchase-orders.items.add');
+
+Route::post('/purchase-orders/{po}/order',
+    [PurchaseOrderController::class,'order']
+)->name('purchase-orders.order');
+
 Route::resource('products', ProductController::class);
 
 Route::get('/customers', [CustomerController::class, 'index'])
@@ -82,6 +91,30 @@ Route::get('/inventory', [InventoryController::class, 'index'])
 Route::get('/api/products/search', [ProductController::class, 'search'])
     ->middleware('auth')
     ->name('products.search');
+
+Route::post('/purchase-orders/{po}/receive', [PurchaseOrderController::class,'receive'])
+    ->middleware('auth')
+    ->name('purchase-orders.receive');
+
+Route::get('/purchase-orders', [PurchaseOrderController::class,'index'])
+    ->middleware('auth')
+    ->name('purchase-orders.index');
+
+Route::get('/purchase-orders/create', [PurchaseOrderController::class,'create'])
+    ->middleware('auth')
+    ->name('purchase-orders.create');
+
+Route::post('/purchase-orders', [PurchaseOrderController::class,'store'])
+    ->middleware('auth')
+    ->name('purchase-orders.store');
+
+Route::get('/purchase-orders/{po}', [PurchaseOrderController::class,'show'])
+    ->middleware('auth')
+    ->name('purchase-orders.show');
+
+Route::post('/purchase-orders/{po}/receive', [PurchaseOrderController::class,'receive'])
+    ->middleware('auth')
+    ->name('purchase-orders.receive');
 
 
 Route::get('/stock-movements', [StockMovementController::class, 'index'])

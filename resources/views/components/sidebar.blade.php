@@ -38,6 +38,10 @@
             Stock Movements
         </x-sidebar-link>
 
+        <x-sidebar-link href="/purchase-orders">
+            Purchase Orders
+        </x-sidebar-link>
+
     </nav>
 
 </div>

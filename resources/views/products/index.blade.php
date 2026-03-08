@@ -45,13 +45,18 @@ Add Product
 
             <div class="flex items-center gap-4">
 
-                <input
-                    name="search"
-                    value="{{ request('search') }}"
-                    type="text"
-                    placeholder="Search products..."
-                    class="w-96 border border-gray-200 rounded-md px-3 py-2 text-sm bg-slate-50"
-                />
+                <div x-data="{ search: '{{ request('search') }}' }">
+
+                    <input
+                        name="search"
+                        x-model="search"
+                        x-on:input.debounce.2000ms="$el.form.submit()"
+                        type="text"
+                        placeholder="Search by name or SKU..."
+                        class="w-96 border border-gray-200 rounded-md px-3 py-2 text-sm bg-slate-50"
+                    >
+
+                </div>
 
                 <select name="supplier">
                     <option value="">All Suppliers</option>
