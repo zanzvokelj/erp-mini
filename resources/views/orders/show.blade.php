@@ -12,8 +12,8 @@
             <span class="text-gray-400">/</span>
 
             <span class="font-semibold text-gray-800">
-#{{ $order->order_number }}
-</span>
+                #{{ $order->order_number }}
+            </span>
         </div>
 
 
@@ -52,6 +52,7 @@
                 </div>
 
             </div>
+
         </div>
 
 
@@ -154,7 +155,7 @@
                     <form
                         method="POST"
                         action="{{ route('orders.items.add', $order) }}"
-                        class="flex items-center gap-4"
+                        class="flex items-start gap-4"
                     >
 
                         @csrf
@@ -166,13 +167,26 @@
                             class="w-72 border border-gray-200 rounded-md px-3 py-2 text-sm"
                         ></select>
 
-                        <input
-                            type="number"
-                            name="quantity"
-                            value="1"
-                            min="1"
-                            class="w-20 border border-gray-200 rounded px-3 py-2 text-sm"
-                        />
+
+                        <div class="flex flex-col">
+
+                            <input
+                                type="number"
+                                name="quantity"
+                                id="qty-input"
+                                value="1"
+                                min="1"
+                                class="w-20 border border-gray-200 rounded px-3 py-2 text-sm"
+                            />
+
+                            <div class="text-xs text-gray-500 mt-1" id="stock-info"></div>
+
+                            <div class="text-xs text-red-600 hidden" id="stock-warning">
+                                Not enough available stock
+                            </div>
+
+                        </div>
+
 
                         <button
                             class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
@@ -203,25 +217,7 @@
 
                     <div class="flex items-center gap-3 text-sm">
 
-                        @if($activity->type === 'created')
-                            <span>🟢</span>
-                        @elseif($activity->type === 'item_added')
-                            <span>➕</span>
-                        @elseif($activity->type === 'item_updated')
-                            <span>✏️</span>
-                        @elseif($activity->type === 'item_removed')
-                            <span>🗑</span>
-                        @elseif($activity->type === 'confirmed')
-                            <span>📦</span>
-                        @elseif($activity->type === 'shipped')
-                            <span>🚚</span>
-                        @elseif($activity->type === 'completed')
-                            <span>✅</span>
-                        @elseif($activity->type === 'cancelled')
-                            <span>❌</span>
-                        @else
-                            <span>•</span>
-                        @endif
+                        <span>•</span>
 
                         <div class="text-gray-700">
                             {{ $activity->description }}
@@ -248,13 +244,9 @@
 
                 <form method="POST" action="{{ route('orders.confirm', $order) }}">
                     @csrf
-
-                    <button
-                        class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-                    >
+                    <button class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
                         Confirm Order
                     </button>
-
                 </form>
 
             @endif
@@ -264,24 +256,21 @@
 
                 <form method="POST" action="{{ route('orders.ship', $order) }}">
                     @csrf
-
-                    <button
-                        class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-                    >
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
                         Mark as Shipped
                     </button>
-
                 </form>
+
+            @endif
+
+
+            @if(in_array($order->status, ['draft','confirmed']))
 
                 <form method="POST" action="{{ route('orders.cancel',$order) }}">
                     @csrf
-
-                    <button
-                        class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700"
-                    >
+                    <button class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">
                         Cancel Order
                     </button>
-
                 </form>
 
             @endif
@@ -291,13 +280,21 @@
 
                 <form method="POST" action="{{ route('orders.complete', $order) }}">
                     @csrf
-
-                    <button
-                        class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700"
-                    >
+                    <button class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">
                         Mark as Completed
                     </button>
+                </form>
 
+            @endif
+
+
+            @if($order->status === 'completed')
+
+                <form method="POST" action="{{ route('orders.return', $order) }}">
+                    @csrf
+                    <button class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700">
+                        Mark as Returned
+                    </button>
                 </form>
 
             @endif
@@ -315,34 +312,61 @@
 
         document.addEventListener("DOMContentLoaded", function () {
 
-            new TomSelect("#product-select",{
+            let currentAvailable = 0;
 
-                valueField: "id",
-                labelField: "name",
-                searchField: ["name","sku"],
+            const qtyInput = document.getElementById("qty-input");
+            const stockInfo = document.getElementById("stock-info");
+            const stockWarning = document.getElementById("stock-warning");
 
-                preload: true,
-                openOnFocus: true,
+            const productSelect = document.querySelector("#product-select");
 
-                load: function(query, callback) {
+            if(productSelect){
 
-                    fetch(`/api/products/search?q=${query}`)
-                        .then(response => response.json())
-                        .then(json => {
+                const select = new TomSelect(productSelect,{
 
-                            const results = json.map(product => ({
-                                id: product.id,
-                                name: `${product.name} — ${product.sku} — €${product.price}`
-                            }));
+                    valueField: "id",
+                    labelField: "name",
+                    searchField: ["name","sku"],
+                    preload: true,
+                    openOnFocus: true,
 
-                            callback(results);
+                    load: function(query, callback) {
 
-                        })
-                        .catch(() => callback());
+                        fetch(`/api/products/search?q=${query}`)
+                            .then(response => response.json())
+                            .then(json => {
 
-                }
+                                const results = json.map(product => ({
+                                    id: product.id,
+                                    name: `${product.name} — ${product.sku} — €${product.price}
+                        (Stock: ${product.stock} | Reserved: ${product.reserved} | Available: ${product.available})`,
+                                    stock: product.stock,
+                                    reserved: product.reserved,
+                                    available: product.available
+                                }));
 
-            });
+                                callback(results);
+
+                            })
+                            .catch(() => callback());
+
+                    },
+
+                    onChange: function(value){
+
+                        const option = this.options[value];
+
+                        currentAvailable = option.available || 0;
+
+                        stockInfo.innerText =
+                            `Stock: ${option.stock} | Reserved: ${option.reserved} | Available: ${option.available}`;
+
+                        validateQty();
+                    }
+
+                });
+
+            }
 
         });
 

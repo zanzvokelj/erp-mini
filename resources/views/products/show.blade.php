@@ -29,6 +29,26 @@
         </div>
 
 
+        @if($daysUntilOut)
+
+            <div class="bg-yellow-50 border border-yellow-200 p-4 rounded">
+
+                <div class="text-sm text-yellow-800">
+
+                    ⚠ Stock forecast
+
+                    <div class="mt-1 font-medium">
+                        Inventory will run out in
+                        <strong>{{ $daysUntilOut }} days</strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        @endif
+
+
         <!-- Product Info -->
 
         <div class="bg-white border border-gray-200 rounded-lg p-6">

@@ -87,20 +87,7 @@ class OrderService
 
             }
 
-            // 4️⃣ create stock movements
-            foreach ($order->items as $item) {
 
-                $product = $products[$item->product_id];
-
-                $this->productService->adjustStock(
-                    $product,
-                    'out',
-                    $item->quantity,
-                    'order',
-                    $order->id
-                );
-
-            }
 
             // 5️⃣ calculate totals
             $this->calculateTotals($order);
@@ -149,8 +136,76 @@ class OrderService
         ]);
     }
 
-    public function cancelOrder(Order $order)
+    public function cancelOrder(Order $order): void
     {
+        if (!in_array($order->status, ['draft','confirmed'])) {
+            throw new \Exception('Only draft or confirmed orders can be cancelled.');
+        }
+
+        DB::transaction(function () use ($order) {
+
+            $order->update([
+                'status' => 'cancelled'
+            ]);
+
+            $this->logActivity(
+                $order,
+                'cancelled',
+                'Order cancelled'
+            );
+
+        });
+    }
+
+    public function shipOrder(Order $order): void
+    {
+        if ($order->status !== 'confirmed') {
+            throw new \Exception('Only confirmed orders can be shipped.');
+        }
+
+        if ($order->status === 'shipped') {
+            throw new \Exception('Order already shipped.');
+        }
+
+        DB::transaction(function () use ($order) {
+
+            $order->load('items.product');
+
+            foreach ($order->items as $item) {
+
+                $this->productService->adjustStock(
+                    $item->product,
+                    'out',
+                    $item->quantity,
+                    'order',
+                    $order->id
+                );
+
+            }
+
+            $order->update([
+                'status' => 'shipped'
+            ]);
+
+            $this->logActivity(
+                $order,
+                'shipped',
+                'Order shipped and inventory deducted'
+            );
+
+        });
+    }
+
+    public function returnOrder(Order $order): void
+    {
+        if ($order->status !== 'completed') {
+            throw new \Exception('Only completed orders can be returned.');
+        }
+
+        if ($order->status === 'returned') {
+            throw new \Exception('Order already returned.');
+        }
+
         DB::transaction(function () use ($order) {
 
             $order->load('items.product');
@@ -161,20 +216,20 @@ class OrderService
                     $item->product,
                     'in',
                     $item->quantity,
-                    'order_cancel',
+                    'order_return',
                     $order->id
                 );
 
             }
 
             $order->update([
-                'status' => 'cancelled'
+                'status' => 'returned'
             ]);
 
             $this->logActivity(
                 $order,
-                'cancelled',
-                'Order cancelled and stock returned'
+                'returned',
+                'Order returned and inventory restocked'
             );
 
         });

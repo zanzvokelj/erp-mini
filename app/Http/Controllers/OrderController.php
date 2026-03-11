@@ -7,6 +7,7 @@ use App\Services\OrderService;
 use Illuminate\Http\Request;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\OrderItem;
 
 
 class OrderController extends Controller
@@ -102,6 +103,44 @@ class OrderController extends Controller
 
         $product = Product::findOrFail($request->product_id);
 
+        /*
+        CALCULATE CURRENT STOCK
+        */
+
+        $stock = $product->stockMovements()
+            ->selectRaw("
+        COALESCE(SUM(
+            CASE
+                WHEN type='in' THEN quantity
+                WHEN type='out' THEN -quantity
+            END
+        ),0) as stock
+    ")
+            ->value('stock');
+
+        /*
+        CALCULATE RESERVED
+        */
+
+        $reserved = \DB::table('order_items')
+            ->join('orders','orders.id','=','order_items.order_id')
+            ->where('order_items.product_id',$product->id)
+            ->whereIn('orders.status',['draft','confirmed'])
+            ->sum('order_items.quantity');
+
+        $available = $stock - $reserved;
+
+        /*
+        VALIDATE
+        */
+
+        if($request->quantity > $available){
+
+            return back()->with('error',
+                "Only {$available} items available in stock."
+            );
+        }
+
         $this->orderService->addItem(
             $order,
             $product,
@@ -115,17 +154,17 @@ class OrderController extends Controller
 
     public function ship(Order $order)
     {
-        if ($order->status !== 'confirmed') {
-            return back()->with('error', 'Only confirmed orders can be shipped.');
+        try {
+
+            $this->orderService->shipOrder($order);
+
+            return back()->with('success', 'Order shipped');
+
+        } catch (\Exception $e) {
+
+            return back()->with('error', $e->getMessage());
+
         }
-
-        $order->update([
-            'status' => 'shipped'
-        ]);
-
-        $this->orderService->logActivity($order, 'shipped', 'Order shipped');
-
-        return back()->with('success', 'Order shipped');
     }
 
     public function complete(Order $order)
@@ -197,8 +236,8 @@ class OrderController extends Controller
 
     public function cancel(Order $order)
     {
-        if ($order->status !== 'confirmed') {
-            return back()->with('error','Only confirmed orders can be cancelled.');
+        if (!in_array($order->status, ['draft','confirmed'])) {
+            return back()->with('error','Only draft or confirmed orders can be cancelled.');
         }
 
         $this->orderService->cancelOrder($order);
@@ -206,5 +245,19 @@ class OrderController extends Controller
         return back()->with('success','Order cancelled');
     }
 
+    public function returnOrder(Order $order)
+    {
+        try {
+
+            $this->orderService->returnOrder($order);
+
+            return back()->with('success', 'Order returned');
+
+        } catch (\Exception $e) {
+
+            return back()->with('error', $e->getMessage());
+
+        }
+    }
 
 }

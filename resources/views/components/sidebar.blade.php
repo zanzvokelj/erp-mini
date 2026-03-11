@@ -42,6 +42,10 @@
             Purchase Orders
         </x-sidebar-link>
 
+        <x-sidebar-link href="/reorder-suggestions">
+            Reorder Suggestions
+        </x-sidebar-link>
+
     </nav>
 
 </div>

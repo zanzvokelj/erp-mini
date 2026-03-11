@@ -11,6 +11,8 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\ReorderController;
+use App\Http\Controllers\OrderItem;
 
 
 Route::get('/', function () {
@@ -116,6 +118,14 @@ Route::post('/purchase-orders/{po}/receive', [PurchaseOrderController::class,'re
     ->middleware('auth')
     ->name('purchase-orders.receive');
 
+Route::post('/orders/{order}/return', [OrderController::class, 'returnOrder'])
+    ->name('orders.return');
+
+Route::get('/reorder-suggestions', [ReorderController::class,'index'])
+    ->name('reorder.index');
+
+Route::post('/reorder/create-po', [ReorderController::class,'createPO'])
+    ->name('reorder.createPO');
 
 Route::get('/stock-movements', [StockMovementController::class, 'index'])
     ->middleware('auth')

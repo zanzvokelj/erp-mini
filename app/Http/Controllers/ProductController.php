@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Http\Requests\StoreProductRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use App\Services\InventoryForecastService;
 class ProductController extends Controller
 {
     public function index()
@@ -138,13 +139,19 @@ END
 
         $currentStock = $balance;
 
-        // newest first for UI
+        // newest first
         $movements = $movements->reverse()->take(50);
+
+        // FORECAST
+        $forecastService = new InventoryForecastService();
+
+        $daysUntilOut = $forecastService->forecast($product);
 
         return view('products.show', [
             'product' => $product,
             'movements' => $movements,
-            'stock' => $currentStock
+            'stock' => $currentStock,
+            'daysUntilOut' => $daysUntilOut
         ]);
     }
 
@@ -161,14 +168,59 @@ END
     {
         $query = $request->input('q');
 
-        $products = Product::query()
+        $products = DB::table('products')
+
+            ->select(
+                'products.id',
+                'products.name',
+                'products.sku',
+                'products.price',
+
+                DB::raw("
+            (
+                SELECT COALESCE(SUM(
+                    CASE
+                        WHEN type = 'in' THEN quantity
+                        WHEN type = 'out' THEN -quantity
+                    END
+                ),0)
+                FROM stock_movements
+                WHERE stock_movements.product_id = products.id
+            ) as stock
+            "),
+
+                DB::raw("
+            (
+                SELECT COALESCE(SUM(order_items.quantity),0)
+                FROM order_items
+                JOIN orders ON orders.id = order_items.order_id
+                WHERE order_items.product_id = products.id
+                AND orders.status IN ('draft','confirmed')
+            ) as reserved
+            ")
+            )
+
             ->when($query, function ($q) use ($query) {
-                $q->whereRaw('LOWER(name) LIKE ?', ["%".strtolower($query)."%"])
-                    ->orWhereRaw('LOWER(sku) LIKE ?', ["%".strtolower($query)."%"]);
+
+                $q->where(function($sub) use ($query){
+
+                    $sub->where('products.name','like','%'.$query.'%')
+                        ->orWhere('products.sku','like','%'.$query.'%');
+
+                });
+
             })
-            ->orderBy('name')
-            ->limit($query ? 20 : 10)
-            ->get(['id','name','sku','price']);
+
+            ->orderBy('products.name')
+            ->get();
+
+        $products->transform(function ($product) {
+
+            $product->available = $product->stock - $product->reserved;
+
+            return $product;
+
+        });
 
         return response()->json($products);
     }

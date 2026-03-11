@@ -71,4 +71,5 @@ class ProductService
 
         return $currentStock < $product->min_stock;
     }
+
 }
