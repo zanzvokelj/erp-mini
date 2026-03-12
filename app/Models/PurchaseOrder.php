@@ -9,11 +9,11 @@ class PurchaseOrder extends Model
     protected $fillable = [
         'po_number',
         'supplier_id',
+        'warehouse_id',
         'status',
         'total',
         'ordered_at',
-        'received_at',
-        'notes'
+        'received_at'
     ];
 
     public function supplier()
@@ -24,5 +24,10 @@ class PurchaseOrder extends Model
     public function items()
     {
         return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(\App\Models\Warehouse::class);
     }
 }

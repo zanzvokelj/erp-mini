@@ -26,6 +26,7 @@
                 <tr>
                     <th class="px-6 py-3 text-left">PO</th>
                     <th class="px-6 py-3 text-left">Supplier</th>
+                    <th class="px-6 py-3 text-left">Warehouse</th>
                     <th class="px-6 py-3 text-left">Status</th>
                     <th class="px-6 py-3 text-left">Total</th>
                     <th class="px-6 py-3 text-left">Date</th>
@@ -50,6 +51,10 @@
 
                         <td class="px-6 py-3">
                             {{ $po->supplier->name }}
+                        </td>
+
+                        <td class="px-6 py-3">
+                            {{ $po->warehouse->name ?? '-' }}
                         </td>
 
                         <td class="px-6 py-3">

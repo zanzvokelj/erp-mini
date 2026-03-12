@@ -28,6 +28,7 @@ class PurchaseOrderService
 
                 $this->productService->adjustStock(
                     $item->product,
+                    $po->warehouse_id,
                     'in',
                     $item->quantity,
                     'purchase_order',

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
+use App\Models\Warehouse;
 class StockMovement extends Model
 {
     use HasFactory;
@@ -15,7 +15,8 @@ class StockMovement extends Model
         'quantity',
         'reference_type',
         'reference_id',
-        'created_by'
+        'created_by',
+        'warehouse_id',
     ];
 
     public function product(): BelongsTo
@@ -26,5 +27,10 @@ class StockMovement extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 }

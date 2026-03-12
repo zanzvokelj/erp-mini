@@ -43,6 +43,7 @@ class ProductService
 
     public function adjustStock(
         Product $product,
+        int $warehouseId,
         string $type,
         int $quantity,
         ?string $referenceType = null,
@@ -52,6 +53,7 @@ class ProductService
 
         $movement = StockMovement::create([
             'product_id' => $product->id,
+            'warehouse_id' => $warehouseId,
             'type' => $type,
             'quantity' => $quantity,
             'reference_type' => $referenceType,
@@ -72,4 +74,22 @@ class ProductService
         return $currentStock < $product->min_stock;
     }
 
+
+    public function calculateStockInWarehouse(Product $product, int $warehouseId): int
+    {
+        $stock = StockMovement::where('product_id', $product->id)
+            ->where('warehouse_id', $warehouseId)
+            ->selectRaw("
+            SUM(
+                CASE
+                    WHEN type = 'in' THEN quantity
+                    WHEN type = 'out' THEN -quantity
+                    ELSE quantity
+                END
+            ) as stock
+        ")
+            ->value('stock');
+
+        return $stock ?? 0;
+    }
 }

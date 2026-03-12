@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\OrderItem;
 use App\Services\InventoryService;
+use App\Models\Warehouse;
 
 class OrderController extends Controller
 {
@@ -19,7 +20,7 @@ class OrderController extends Controller
 
     public function index()
     {
-        $query = Order::with('customer');
+        $query = Order::with(['customer','warehouse']);
 
         /*
         SEARCH
@@ -57,11 +58,13 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'customer_id' => ['required','exists:customers,id']
+            'customer_id' => ['required','exists:customers,id'],
+            'warehouse_id' => ['required','exists:warehouses,id']
         ]);
 
         $order = $this->orderService->createDraftOrder(
-            $request->customer_id
+            $request->customer_id,
+            $request->warehouse_id
         );
 
         return redirect()->route('orders.show', $order);
@@ -77,16 +80,18 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load('customer', 'items.product', 'activities');
+        $order->load('customer', 'warehouse', 'items.product', 'activities');
 
         return view('orders.show', compact('order'));
     }
 
+
     public function create()
     {
         $customers = Customer::orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('name')->get();
 
-        return view('orders.create', compact('customers'));
+        return view('orders.create', compact('customers','warehouses'));
     }
 
     public function addItem(Request $request, Order $order)
@@ -105,7 +110,7 @@ class OrderController extends Controller
         $product = Product::findOrFail($request->product_id);
 
         $available = $this->inventoryService
-            ->availableStock($product);
+            ->availableStock($product, $order->warehouse_id);
 
         if ($request->quantity > $available) {
 

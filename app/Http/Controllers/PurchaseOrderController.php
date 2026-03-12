@@ -7,6 +7,8 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Services\PurchaseOrderService;
 use App\Models\PurchaseOrderItem;
+use App\Models\Warehouse;
+
 
 
 class PurchaseOrderController extends Controller
@@ -20,7 +22,7 @@ class PurchaseOrderController extends Controller
 
     public function index()
     {
-        $purchaseOrders = PurchaseOrder::with('supplier')
+        $purchaseOrders = PurchaseOrder::with(['supplier','warehouse'])
             ->latest()
             ->paginate(20);
 
@@ -30,19 +32,22 @@ class PurchaseOrderController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('name')->get();
 
-        return view('purchase-orders.create', compact('suppliers'));
+        return view('purchase-orders.create', compact('suppliers','warehouses'));
     }
-
     public function store(Request $request)
     {
         $request->validate([
-            'supplier_id' => ['required','exists:suppliers,id']
+            'supplier_id' => ['required','exists:suppliers,id'],
+            'warehouse_id' => ['required','exists:warehouses,id']
         ]);
 
         $po = PurchaseOrder::create([
             'po_number' => 'PO-' . now()->timestamp,
-            'supplier_id' => $request->supplier_id
+            'supplier_id' => $request->supplier_id,
+            'warehouse_id' => $request->warehouse_id,
+            'status' => 'draft'
         ]);
 
         return redirect()->route('purchase-orders.show', $po);

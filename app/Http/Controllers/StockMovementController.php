@@ -11,6 +11,7 @@ class StockMovementController extends Controller
     {
         $query = DB::table('stock_movements')
             ->join('products','stock_movements.product_id','=','products.id')
+            ->leftJoin('warehouses','stock_movements.warehouse_id','=','warehouses.id')
             ->select(
                 'stock_movements.id',
                 'stock_movements.type',
@@ -18,7 +19,8 @@ class StockMovementController extends Controller
                 'stock_movements.reference_id',
                 'stock_movements.created_at',
                 'products.name as product_name',
-                'products.sku as product_sku'
+                'products.sku as product_sku',
+                'warehouses.name as warehouse_name'
             );
 
         /*

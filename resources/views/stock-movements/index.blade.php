@@ -71,6 +71,7 @@
 
                 <tr>
                     <th class="text-left px-6 py-3">Date</th>
+                    <th class="text-left px-6 py-3">Warehouse</th>
                     <th class="text-left px-6 py-3">Product</th>
                     <th class="text-left px-6 py-3">Type</th>
                     <th class="text-left px-6 py-3">Quantity</th>
@@ -90,11 +91,16 @@
                         </td>
 
                         <td class="px-6 py-3">
+                            {{ $movement->warehouse_name ?? '-' }}
+                        </td>
+
+                        <td class="px-6 py-3">
                             <div class="flex flex-col">
                             <span>{{ $movement->product_name }}</span>
                                 <span class="text-xs text-gray-500">SKU: {{ $movement->product_sku }}</span>
                             </div>
                         </td>
+
 
 
 

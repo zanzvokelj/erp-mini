@@ -7,6 +7,8 @@ use App\Http\Requests\StoreProductRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Services\InventoryForecastService;
+use App\Models\Warehouse;
+use App\Models\StockMovement;
 class ProductController extends Controller
 {
     public function index()
@@ -31,8 +33,14 @@ class ProductController extends Controller
                 ),0) as stock
             ")
             )
-            ->groupBy('products.id','suppliers.name');
-
+            ->groupBy(
+                'products.id',
+                'products.sku',
+                'products.name',
+                'products.price',
+                'products.min_stock',
+                'suppliers.name'
+            );
 
         /*
         SEARCH
@@ -51,7 +59,6 @@ class ProductController extends Controller
 
         }
 
-
         /*
         SUPPLIER FILTER
         */
@@ -59,7 +66,6 @@ class ProductController extends Controller
         if(request('supplier')) {
             $query->where('products.supplier_id',request('supplier'));
         }
-
 
         /*
         PRICE FILTER
@@ -72,7 +78,6 @@ class ProductController extends Controller
         if(request('max_price')) {
             $query->where('products.price','<=',request('max_price'));
         }
-
 
         /*
         STATUS FILTER
@@ -102,15 +107,14 @@ END
 ");
         }
 
-
         $products = $query
             ->paginate(20)
             ->withQueryString();
 
         $suppliers = DB::table('suppliers')->get();
+        $warehouses = Warehouse::orderBy('name')->get();
 
-
-        return view('products.index', compact('products', 'suppliers'));
+        return view('products.index', compact('products', 'suppliers','warehouses'));
     }
 
     public function store(StoreProductRequest $request)
@@ -121,8 +125,11 @@ END
     public function show(Product $product)
     {
         $movements = $product->stockMovements()
-            ->orderBy('created_at')
-            ->get();
+            ->with('warehouse')
+            ->latest()
+            ->limit(50)
+            ->get()
+            ->reverse();
 
         $balance = 0;
 
@@ -147,11 +154,29 @@ END
 
         $daysUntilOut = $forecastService->forecast($product);
 
+        $warehouses = Warehouse::orderBy('name')->get();
+
+        $warehouseStock = StockMovement::where('product_id', $product->id)
+            ->selectRaw("
+        warehouse_id,
+        SUM(
+            CASE
+                WHEN type = 'in' THEN quantity
+                WHEN type = 'out' THEN -quantity
+                ELSE 0
+            END
+        ) as stock
+    ")
+            ->groupBy('warehouse_id')
+            ->pluck('stock','warehouse_id');
+
         return view('products.show', [
             'product' => $product,
             'movements' => $movements,
             'stock' => $currentStock,
-            'daysUntilOut' => $daysUntilOut
+            'daysUntilOut' => $daysUntilOut,
+            'warehouses' => $warehouses,
+            'warehouseStock' => $warehouseStock
         ]);
     }
 

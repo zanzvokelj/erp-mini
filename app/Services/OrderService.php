@@ -27,14 +27,14 @@ class OrderService
         $this->inventoryService = $inventoryService;
     }
 
-    public function createDraftOrder(int $customerId): Order
+    public function createDraftOrder(int $customerId, int $warehouseId): Order
     {
         $order = Order::create([
             'order_number' => 'ORD-' . now()->timestamp,
             'customer_id' => $customerId,
+            'warehouse_id' => $warehouseId,
             'status' => 'draft'
         ]);
-
         $this->logActivity($order, 'created', 'Order created');
 
         return $order;
@@ -50,7 +50,7 @@ class OrderService
                 ->first();
 
             $available = $this->inventoryService
-                ->availableStock($product);
+                ->availableStock($product, $order->warehouse_id);
 
             if ($quantity > $available) {
                 throw new \Exception(
@@ -211,6 +211,7 @@ class OrderService
 
                 $this->productService->adjustStock(
                     $item->product,
+                    $order->warehouse_id,
                     'out',
                     $item->quantity,
                     'order',
@@ -257,6 +258,7 @@ class OrderService
 
                 $this->productService->adjustStock(
                     $item->product,
+                    $order->warehouse_id,
                     'in',
                     $item->quantity,
                     'order_return',

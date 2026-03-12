@@ -44,6 +44,32 @@
 
                     </div>
 
+                    <!-- Warehouse -->
+
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">
+                            Warehouse
+                        </label>
+
+                        <select
+                            id="warehouse-select"
+                            name="warehouse_id"
+                            required
+                            class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
+                        >
+
+                            @foreach($warehouses as $warehouse)
+
+                                <option value="{{ $warehouse->id }}">
+                                    {{ $warehouse->name }}
+                                </option>
+
+                            @endforeach
+
+                        </select>
+
+                    </div>
+
                     <!-- Buttons -->
 
                     <div class="flex items-center gap-3 pt-4">
@@ -83,6 +109,10 @@
                 field:"text",
                 direction:"asc"
             }
+        });
+
+        new TomSelect("#warehouse-select",{
+            create:false
         });
 
     </script>

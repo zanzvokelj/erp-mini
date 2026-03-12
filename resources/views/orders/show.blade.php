@@ -44,6 +44,11 @@
                 </div>
 
                 <div>
+                    <p class="text-gray-500">Warehouse</p>
+                    <p class="font-medium">{{ $order->warehouse->name ?? '-' }}</p>
+                </div>
+
+                <div>
                     <p class="text-gray-500">Status</p>
                     <p class="font-medium">{{ ucfirst($order->status) }}</p>
                 </div>

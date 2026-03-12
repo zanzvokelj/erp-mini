@@ -58,6 +58,17 @@ Add Product
 
                 </div>
 
+                <select name="warehouse">
+                    <option value="">All Warehouses</option>
+
+                    @foreach($warehouses as $warehouse)
+                        <option value="{{ $warehouse->id }}"
+                            {{ request('warehouse') == $warehouse->id ? 'selected' : '' }}>
+                            {{ $warehouse->name }}
+                        </option>
+                    @endforeach
+                </select>
+
                 <select name="supplier">
                     <option value="">All Suppliers</option>
 

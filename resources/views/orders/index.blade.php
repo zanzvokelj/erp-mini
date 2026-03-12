@@ -105,6 +105,7 @@
                 <thead class="bg-gray-50 text-gray-500">
                 <tr>
                     <th class="text-left px-6 py-3">Order</th>
+                    <th class="text-left px-6 py-3">Warehouse</th>
                     <th class="text-left px-6 py-3">Customer</th>
                     <th class="text-left px-6 py-3">Status</th>
                     <th class="text-left px-6 py-3">Total</th>
@@ -118,6 +119,10 @@
 
                         <td class="px-6 py-3 font-medium">
                             #{{ $order->order_number }}
+                        </td>
+
+                        <td class="px-6 py-3">
+                            {{ $order->warehouse->name ?? '-' }}
                         </td>
 
                         <td class="px-6 py-3">

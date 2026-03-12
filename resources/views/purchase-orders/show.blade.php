@@ -13,12 +13,28 @@
 
         <div class="bg-white border rounded p-6">
 
-            <div class="text-sm text-gray-500 mb-1">
-                Supplier
-            </div>
+            <div class="grid grid-cols-2 gap-6">
 
-            <div class="font-medium">
-                {{ $po->supplier->name }}
+                <div>
+                    <div class="text-sm text-gray-500 mb-1">
+                        Supplier
+                    </div>
+
+                    <div class="font-medium">
+                        {{ $po->supplier->name }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-sm text-gray-500 mb-1">
+                        Warehouse
+                    </div>
+
+                    <div class="font-medium">
+                        {{ $po->warehouse->name ?? '-' }}
+                    </div>
+                </div>
+
             </div>
 
         </div>

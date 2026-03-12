@@ -20,9 +20,33 @@
 
                 <p class="text-sm text-gray-500">Current Stock</p>
 
-                <p class="text-2xl font-bold text-gray-800">
-                    {{ $stock }}
-                </p>
+                <div class="text-right">
+
+                    <p class="text-sm text-gray-500">Total Stock</p>
+
+                    <p class="text-2xl font-bold text-gray-800 mb-2">
+                        {{ $stock }}
+                    </p>
+
+                    <div class="text-xs text-gray-600 space-y-1">
+
+                        @foreach($warehouses as $warehouse)
+
+                            <div class="flex justify-between gap-4">
+
+                                <span>{{ $warehouse->name }}</span>
+
+                                <span class="font-medium">
+                    {{ $warehouseStock[$warehouse->id] ?? 0 }}
+                </span>
+
+                            </div>
+
+                        @endforeach
+
+                    </div>
+
+                </div>
 
             </div>
 
@@ -100,6 +124,7 @@
                     <th class="text-left px-6 py-3">Balance</th>
                     <th class="text-left px-6 py-3">Reference</th>
                     <th class="text-left px-6 py-3">Date</th>
+                    <th class="text-left px-6 py-3">Warehouse</th>
                 </tr>
 
                 </thead>
@@ -145,6 +170,10 @@
 
                         <td class="px-6 py-3 text-gray-500">
                             {{ $move->created_at->format('M j, Y') }}
+                        </td>
+
+                        <td class="px-6 py-3">
+                            {{ $move->warehouse->name ?? '-' }}
                         </td>
 
                     </tr>

@@ -30,6 +30,24 @@
                         class="w-80 border border-gray-200 rounded-md px-3 py-2 text-sm bg-slate-50"
                     />
 
+                    <select name="warehouse"
+                            class="border border-gray-200 rounded-md py-2 text-sm">
+
+                        <option value="">All Warehouses</option>
+
+                        @foreach($warehouses as $warehouse)
+
+                            <option value="{{ $warehouse->id }}"
+                                {{ request('warehouse') == $warehouse->id ? 'selected' : '' }}>
+
+                                {{ $warehouse->name }}
+
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
                     <select name="status" class="border border-gray-200 rounded-md px-8 py-2 text-sm">
 
                         <option value="">All Statuses</option>

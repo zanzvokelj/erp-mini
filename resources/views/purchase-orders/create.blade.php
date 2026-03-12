@@ -25,6 +25,21 @@
 
             </select>
 
+            <select
+                name="warehouse_id"
+                class="w-full border rounded px-3 py-2 mb-4"
+            >
+
+                @foreach($warehouses as $warehouse)
+
+                    <option value="{{ $warehouse->id }}">
+                        {{ $warehouse->name }}
+                    </option>
+
+                @endforeach
+
+            </select>
+
             <button
                 class="bg-blue-600 text-white px-4 py-2 rounded"
             >
