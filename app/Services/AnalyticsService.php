@@ -11,13 +11,15 @@ class AnalyticsService
     public function totalRevenue()
     {
         return DB::table('orders')
-            ->where('status', 'confirmed')
+            ->where('status', 'completed')
             ->sum('total');
     }
 
     public function totalOrders()
     {
-        return DB::table('orders')->count();
+        return DB::table('orders')
+            ->whereIn('status', ['completed','shipped'])
+            ->count();
     }
 
     public function lowStockCount()
@@ -28,7 +30,7 @@ class AnalyticsService
     {
         return DB::table('orders')
             ->selectRaw("DATE_TRUNC('month', created_at) as month, SUM(total) as revenue")
-            ->where('status', 'confirmed')
+            ->where('status', 'completed')
             ->groupBy('month')
             ->orderBy('month')
             ->get();
@@ -45,18 +47,20 @@ class AnalyticsService
     public function averageOrderValue()
     {
         return DB::table('orders')
-            ->where('status', 'confirmed')
+            ->where('status', 'completed')
             ->avg('total');
     }
 
     public function topProducts()
     {
         return DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('products', 'order_items.product_id', '=', 'products.id')
             ->select(
                 'products.name',
                 DB::raw('SUM(order_items.quantity) as sold')
             )
+            ->where('orders.status', 'completed')
             ->groupBy('products.name')
             ->orderByDesc('sold')
             ->limit(5)
@@ -66,13 +70,17 @@ class AnalyticsService
     public function revenueGrowth()
     {
         $currentMonth = DB::table('orders')
-            ->where('status','confirmed')
+            ->where('status', 'completed')
             ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
             ->sum('total');
 
+        $lastMonthDate = now()->copy()->subMonth();
+
         $lastMonth = DB::table('orders')
-            ->where('status','confirmed')
-            ->whereMonth('created_at', now()->subMonth()->month)
+            ->where('status', 'completed')
+            ->whereMonth('created_at', $lastMonthDate->month)
+            ->whereYear('created_at', $lastMonthDate->year)
             ->sum('total');
 
         if ($lastMonth == 0) {
@@ -81,6 +89,7 @@ class AnalyticsService
 
         return (($currentMonth - $lastMonth) / $lastMonth) * 100;
     }
+
 
 
 
@@ -123,7 +132,7 @@ class AnalyticsService
     {
         $cogs = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->where('orders.status', 'confirmed')
+            ->where('orders.status', 'completed')
             ->selectRaw('SUM(order_items.quantity * order_items.cost_at_time) as cogs')
             ->value('cogs');
 
@@ -146,7 +155,64 @@ class AnalyticsService
         return $cogs / $inventory;
     }
 
+    public function inventoryValue()
+    {
+        return DB::table('products')
+            ->leftJoin('stock_movements','products.id','=','stock_movements.product_id')
+            ->selectRaw("
+            SUM(
+                CASE
+                    WHEN stock_movements.type='in' THEN stock_movements.quantity
+                    WHEN stock_movements.type='out' THEN -stock_movements.quantity
+                    ELSE 0
+                END * products.cost_price
+            ) as value
+        ")
+            ->value('value') ?? 0;
+    }
 
+
+    public function ordersToday()
+    {
+        return \App\Models\Order::whereDate('created_at', today())->count();
+    }
+
+    public function revenueToday()
+    {
+        return \App\Models\Order::whereDate('created_at', today())
+            ->where('status','completed')
+            ->sum('total');
+    }
+
+    public function pendingOrders()
+    {
+        return \App\Models\Order::where('status','confirmed')->count();
+    }
+
+    public function topCustomers()
+    {
+        return \DB::table('orders')
+            ->join('customers','orders.customer_id','=','customers.id')
+            ->select('customers.name', \DB::raw('SUM(orders.total) as revenue'))
+            ->where('orders.status','completed')
+            ->groupBy('customers.name')
+            ->orderByDesc('revenue')
+            ->limit(5)
+            ->get();
+    }
+
+    public function totalProfit()
+    {
+        return \DB::table('order_items')
+            ->join('orders','orders.id','=','order_items.order_id')
+            ->where('orders.status','completed')
+            ->selectRaw("
+            SUM(
+                (price_at_time - cost_at_time) * quantity
+            ) as profit
+        ")
+            ->value('profit') ?? 0;
+    }
 
 
 

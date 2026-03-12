@@ -1,5 +1,16 @@
 <x-app-layout>
 
+    @if(session('success'))
+        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {{ session('error') }}
+        </div>
+    @endif
     <div class="space-y-6">
 
         <!-- Breadcrumb -->
@@ -81,7 +92,10 @@
                     <tr>
 
                         <td class="px-6 py-3">
-                            {{ $item->product->name }}
+                            <div class="flex flex-col">
+                                <span>{{ $item->product->name }}</span>
+                                <span class="text-xs text-gray-500">SKU: {{ $item->product->sku }}</span>
+                            </div>
                         </td>
 
                         <td class="px-6 py-3">

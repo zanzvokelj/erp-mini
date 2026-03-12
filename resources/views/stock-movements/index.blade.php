@@ -90,8 +90,13 @@
                         </td>
 
                         <td class="px-6 py-3">
-                            {{ $movement->product_name }}
+                            <div class="flex flex-col">
+                            <span>{{ $movement->product_name }}</span>
+                                <span class="text-xs text-gray-500">SKU: {{ $movement->product_sku }}</span>
+                            </div>
                         </td>
+
+
 
                         <td class="px-6 py-3">
 

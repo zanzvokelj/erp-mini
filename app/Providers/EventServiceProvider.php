@@ -7,6 +7,9 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 use App\Events\OrderConfirmed;
 use App\Listeners\HandleOrderConfirmed;
 
+use App\Events\OrderShipped;
+use App\Listeners\SendShippingNotification;
+
 class EventServiceProvider extends ServiceProvider
 {
     protected $listen = [
@@ -15,5 +18,14 @@ class EventServiceProvider extends ServiceProvider
             HandleOrderConfirmed::class,
         ],
 
+       OrderShipped::class => [
+           SendShippingNotification::class,
+        ],
+
     ];
+
+    public function shouldDiscoverEvents()
+    {
+        return false;
+    }
 }

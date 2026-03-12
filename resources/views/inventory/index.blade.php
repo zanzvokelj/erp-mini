@@ -88,7 +88,10 @@
                     <tr>
 
                         <td class="px-6 py-3 font-medium">
-                            {{ $product->name }}
+                            <div class="flex flex-col">
+                            <span>{{ $product->name }}</span>
+                                <span class="text-xs text-gray-500">SKU: {{ $product->sku }}</span>
+                            </div>
                         </td>
 
                         <td class="px-6 py-3">

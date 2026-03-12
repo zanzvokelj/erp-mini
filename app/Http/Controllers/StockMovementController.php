@@ -17,7 +17,8 @@ class StockMovementController extends Controller
                 'stock_movements.quantity',
                 'stock_movements.reference_id',
                 'stock_movements.created_at',
-                'products.name as product_name'
+                'products.name as product_name',
+                'products.sku as product_sku'
             );
 
         /*

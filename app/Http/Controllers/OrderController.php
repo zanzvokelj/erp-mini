@@ -8,12 +8,13 @@ use Illuminate\Http\Request;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\OrderItem;
-
+use App\Services\InventoryService;
 
 class OrderController extends Controller
 {
     public function __construct(
-        protected OrderService $orderService
+        protected OrderService $orderService,
+        protected InventoryService $inventoryService
     ) {}
 
     public function index()
@@ -103,42 +104,15 @@ class OrderController extends Controller
 
         $product = Product::findOrFail($request->product_id);
 
-        /*
-        CALCULATE CURRENT STOCK
-        */
+        $available = $this->inventoryService
+            ->availableStock($product);
 
-        $stock = $product->stockMovements()
-            ->selectRaw("
-        COALESCE(SUM(
-            CASE
-                WHEN type='in' THEN quantity
-                WHEN type='out' THEN -quantity
-            END
-        ),0) as stock
-    ")
-            ->value('stock');
-
-        /*
-        CALCULATE RESERVED
-        */
-
-        $reserved = \DB::table('order_items')
-            ->join('orders','orders.id','=','order_items.order_id')
-            ->where('order_items.product_id',$product->id)
-            ->whereIn('orders.status',['draft','confirmed'])
-            ->sum('order_items.quantity');
-
-        $available = $stock - $reserved;
-
-        /*
-        VALIDATE
-        */
-
-        if($request->quantity > $available){
+        if ($request->quantity > $available) {
 
             return back()->with('error',
                 "Only {$available} items available in stock."
             );
+
         }
 
         $this->orderService->addItem(
@@ -199,6 +173,13 @@ class OrderController extends Controller
             'quantity' => $request->quantity
         ]);
 
+        // UPDATE RESERVATION
+        $this->inventoryService->updateReservation(
+            $order->id,
+            $item->product_id,
+            $request->quantity
+        );
+
         $this->orderService->calculateTotals($order);
 
         $this->orderService->logActivity(
@@ -220,6 +201,11 @@ class OrderController extends Controller
 
         $productName = $item->product->name;
 
+        // release reservation for this item
+        \App\Models\StockReservation::where('order_id',$order->id)
+            ->where('product_id',$item->product_id)
+            ->delete();
+
         $item->delete();
 
         $this->orderService->calculateTotals($order);
@@ -232,7 +218,6 @@ class OrderController extends Controller
 
         return back();
     }
-
 
     public function cancel(Order $order)
     {

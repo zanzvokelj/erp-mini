@@ -46,4 +46,9 @@ class Product extends Model
     {
         return $this->hasMany(\App\Models\StockMovement::class);
     }
+
+    public function reservations()
+    {
+        return $this->hasMany(StockReservation::class);
+    }
 }

@@ -17,10 +17,10 @@
         </h2>
     </x-slot>
 
-    <div class="space-y-6">
+    <div class="container space-y-6">
 
         <!-- KPI cards -->
-        <div class="container grid grid-cols-4 gap-6">
+        <div class="grid grid-cols-5 gap-6">
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
                 <p class="text-xs text-gray-500">Revenue</p>
@@ -40,6 +40,42 @@
             <div class="bg-white border border-gray-200 rounded-lg p-4">
                 <p class="text-xs text-gray-500">Low Stock</p>
                 <p class="text-xl font-semibold text-red-500">{{ $lowStockCount }}</p>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <p class="text-xs text-gray-500">Inventory Value</p>
+                <p class="text-xl font-semibold text-gray-900">
+                    €{{ number_format($inventoryValue, 2) }}
+                </p>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <p class="text-xs text-gray-500">Orders Today</p>
+                <p class="text-xl font-semibold text-gray-900">
+                    {{ $ordersToday }}
+                </p>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <p class="text-xs text-gray-500">Revenue Today</p>
+                <p class="text-xl font-semibold text-gray-900">
+                    €{{ number_format($revenueToday, 2) }}
+                </p>
+            </div>
+
+
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <p class="text-xs text-gray-500">Pending Orders</p>
+                <p class="text-xl font-semibold text-gray-900">
+                    {{ $pendingOrders }}
+                </p>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <p class="text-xs text-gray-500">Profit</p>
+                <p class="text-xl font-semibold text-green-600">
+                    €{{ number_format($totalProfit, 2) }}
+                </p>
             </div>
 
         </div>
@@ -173,7 +209,7 @@
 
         </div>
 
-        <div class="grid grid-cols-3 gap-6">
+        <div class="grid grid-cols-4 gap-6">
 
             <!-- Top Products -->
             <div class="bg-white border border-gray-200 rounded-lg p-6">
@@ -198,6 +234,42 @@
                         <tr>
                             <td class="py-2">{{ $product->name }}</td>
                             <td class="py-2 text-right font-medium">{{ $product->sold }}</td>
+                        </tr>
+
+                    @endforeach
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            <!-- Top Customers -->
+            <div class="bg-white border border-gray-200 rounded-lg p-6">
+
+                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+                    Top Customers
+                </h2>
+
+                <table class="w-full text-sm">
+
+                    <thead class="text-gray-500">
+                    <tr>
+                        <th class="text-left py-2">Customer</th>
+                        <th class="text-right py-2">Revenue</th>
+                    </tr>
+                    </thead>
+
+                    <tbody class="divide-y">
+
+                    @foreach($topCustomers as $customer)
+
+                        <tr>
+                            <td class="py-2">{{ $customer->name }}</td>
+                            <td class="py-2 text-right font-medium">
+                                €{{ number_format($customer->revenue, 2) }}
+                            </td>
                         </tr>
 
                     @endforeach

@@ -137,6 +137,9 @@ Route::get('/dashboard', [DashboardController::class, 'dashboard'])
     ->middleware(['auth','verified'])
     ->name('dashboard');
 
+Route::get('/customers/{customer}', [CustomerController::class,'show'])
+    ->name('customers.show');
+
 Route::get('/dashboard-data', [DashboardController::class, 'index'])
     ->middleware('auth');
 

@@ -10,14 +10,21 @@ use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
 use App\Events\OrderConfirmed;
 use App\Models\OrderActivity;
+use App\Services\InventoryService;
+use App\Events\OrderShipped;
+
 
 class OrderService
 {
     protected ProductService $productService;
+    protected InventoryService $inventoryService;
 
-    public function __construct(ProductService $productService)
-    {
+    public function __construct(
+        ProductService $productService,
+        InventoryService $inventoryService
+    ) {
         $this->productService = $productService;
+        $this->inventoryService = $inventoryService;
     }
 
     public function createDraftOrder(int $customerId): Order
@@ -35,21 +42,44 @@ class OrderService
 
     public function addItem(Order $order, Product $product, int $quantity): OrderItem
     {
-        $item = OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'quantity' => $quantity,
-            'price_at_time' => $product->price,
-            'cost_at_time' => $product->cost_price
-        ]);
+        return DB::transaction(function () use ($order, $product, $quantity) {
 
-        $this->logActivity(
-            $order,
-            'item_added',
-            "{$product->name} (qty {$quantity}) added"
-        );
+            // lock product row
+            $product = Product::where('id', $product->id)
+                ->lockForUpdate()
+                ->first();
 
-        return $item;
+            $available = $this->inventoryService
+                ->availableStock($product);
+
+            if ($quantity > $available) {
+                throw new \Exception(
+                    "Only {$available} items available in stock."
+                );
+            }
+
+            $item = OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'price_at_time' => $product->price,
+                'cost_at_time' => $product->cost_price
+            ]);
+
+            $this->inventoryService->reserveStock(
+                $product,
+                $order->id,
+                $quantity
+            );
+
+            $this->logActivity(
+                $order,
+                'item_added',
+                "{$product->name} (qty {$quantity}) added"
+            );
+
+            return $item;
+        });
     }
 
     public function confirmOrder(Order $order): void
@@ -75,11 +105,14 @@ class OrderService
 
                 $product = $products[$item->product_id];
 
-                $currentStock = $this->productService
-                    ->calculateCurrentStock($product);
+                $reservedForOrder = $order->items
+                    ->where('product_id', $product->id)
+                    ->sum('quantity');
 
-                // 3️⃣ stock validation
-                if ($currentStock < $item->quantity) {
+                $available = $this->inventoryService->availableStock($product)
+                    + $reservedForOrder;
+
+                if ($available < $item->quantity) {
                     throw new \Exception(
                         "Insufficient stock for product {$product->name}"
                     );
@@ -144,6 +177,9 @@ class OrderService
 
         DB::transaction(function () use ($order) {
 
+            // RELEASE RESERVATIONS
+            $this->inventoryService->releaseReservation($order->id);
+
             $order->update([
                 'status' => 'cancelled'
             ]);
@@ -183,6 +219,9 @@ class OrderService
 
             }
 
+// remove reservation
+            $this->inventoryService->releaseReservation($order->id);
+
             $order->update([
                 'status' => 'shipped'
             ]);
@@ -192,6 +231,10 @@ class OrderService
                 'shipped',
                 'Order shipped and inventory deducted'
             );
+
+            \Log::info("Dispatching OrderShipped event {$order->id}");
+
+            event(new OrderShipped($order));
 
         });
     }

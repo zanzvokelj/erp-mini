@@ -125,9 +125,10 @@
 
                         <td class="px-6 py-3">
 
-                            <button class="px-3 py-1 text-xs border border-gray-200 rounded hover:bg-gray-50">
+                            <a href="{{ route('customers.show', $customer->id) }}"
+                               class="px-3 py-1 text-xs border border-gray-200 rounded hover:bg-gray-50">
                                 View
-                            </button>
+                            </a>
 
                         </td>
 

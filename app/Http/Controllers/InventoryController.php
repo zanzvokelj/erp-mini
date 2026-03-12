@@ -23,6 +23,7 @@ class InventoryController extends Controller
             ->select(
                 'products.id',
                 'products.name',
+                'products.sku',
                 'products.min_stock',
                 DB::raw("$stockExpr as stock")
             )

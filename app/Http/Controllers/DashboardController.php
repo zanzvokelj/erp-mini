@@ -34,6 +34,18 @@ class DashboardController extends Controller
             'stockTurnover' => $this->analytics->stockTurnover(),
 
             'revenueGrowth' => $this->analytics->revenueGrowth(),
+
+            'inventoryValue' => $this->analytics->inventoryValue(),
+
+            'ordersToday' => $this->analytics->ordersToday(),
+
+            'revenueToday' => $this->analytics->revenueToday(),
+
+            'pendingOrders' => $this->analytics->pendingOrders(),
+
+            'topCustomers' => $this->analytics->topCustomers(),
+
+            'totalProfit' => $this->analytics->totalProfit(),
         ]);
     }
 
@@ -50,4 +62,6 @@ class DashboardController extends Controller
             'stock_turnover' => $this->analytics->stockTurnover(),
         ]);
     }
+
+
 }
