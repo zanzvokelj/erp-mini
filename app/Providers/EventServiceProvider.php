@@ -18,8 +18,9 @@ class EventServiceProvider extends ServiceProvider
             HandleOrderConfirmed::class,
         ],
 
-       OrderShipped::class => [
-           SendShippingNotification::class,
+        OrderShipped::class => [
+            SendShippingNotification::class,
+            \App\Listeners\GenerateInvoiceFromOrder::class,
         ],
 
     ];

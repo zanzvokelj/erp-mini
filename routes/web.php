@@ -114,10 +114,6 @@ Route::get('/purchase-orders/{po}', [PurchaseOrderController::class,'show'])
     ->middleware('auth')
     ->name('purchase-orders.show');
 
-Route::post('/purchase-orders/{po}/receive', [PurchaseOrderController::class,'receive'])
-    ->middleware('auth')
-    ->name('purchase-orders.receive');
-
 Route::post('/orders/{order}/return', [OrderController::class, 'returnOrder'])
     ->name('orders.return');
 
@@ -151,5 +147,19 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 Route::middleware(['auth', 'role:warehouse'])->group(function () {
     Route::post('/stock-adjust', [StockController::class, 'adjust']);
 });
+
+Route::get('/invoices', function () {
+    return view('invoices.index');
+})->middleware('auth')->name('invoices.index');
+
+Route::get('/invoices/create', function () {
+    return view('invoices.create');
+})->middleware('auth')->name('invoices.create');
+
+Route::get('/invoices/{invoice}', function ($invoice) {
+    return view('invoices.show', ['invoiceId' => $invoice]);
+})->middleware('auth')->name('invoices.show');
+
+
 
 require __DIR__.'/auth.php';

@@ -46,6 +46,10 @@
             Reorder Suggestions
         </x-sidebar-link>
 
+        <x-sidebar-link href="/invoices">
+            Invoices
+            </x-sidebar-link>
+
     </nav>
 
 </div>

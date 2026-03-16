@@ -6,12 +6,16 @@ use App\Http\Controllers\Api\V1\OrderApiController;
 use App\Http\Controllers\Api\V1\CustomerApiController;
 use App\Http\Controllers\Api\V1\SupplierApiController;
 use App\Http\Controllers\Api\V1\InventoryApiController;
+use App\Http\Controllers\Api\V1\InvoiceApiController;
+use App\Http\Controllers\Api\V1\PaymentApiController;
 
 Route::prefix('v1')->group(function () {
 
     Route::get('/products', [ProductApiController::class, 'index']);
     Route::get('/products/{product}', [ProductApiController::class, 'show']);
     Route::get('/products/{product}/stock-history', [ProductApiController::class, 'stockHistory']);
+
+    Route::get('/orders/invoicable', [OrderApiController::class, 'invoicable']);
 
     Route::get('/orders', [OrderApiController::class, 'index']);
     Route::get('/orders/{order}', [OrderApiController::class, 'show']);
@@ -33,4 +37,11 @@ Route::prefix('v1')->group(function () {
     Route::get('/inventory', [InventoryApiController::class, 'index']);
     Route::post('/inventory/adjust', [InventoryApiController::class, 'adjust']);
     Route::get('/stock-movements', [InventoryApiController::class, 'movements']);
+
+    Route::get('/invoices', [InvoiceApiController::class, 'index']);
+    Route::get('/invoices/{invoice}', [InvoiceApiController::class, 'show']);
+    Route::get('/invoices/{invoice}/pdf', [InvoiceApiController::class, 'pdf']);
+    Route::post('/invoices/{invoice}/payments', [PaymentApiController::class, 'store']);
+    Route::get('/invoices/overdue', [InvoiceApiController::class, 'overdue']);
+
 });

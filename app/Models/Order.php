@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\OrderActivity;
 use App\Models\Warehouse;
+use App\Models\Invoice;
 class Order extends Model
 {
 
@@ -43,5 +44,10 @@ class Order extends Model
     public function warehouse()
     {
         return $this->belongsTo(\App\Models\Warehouse::class);
+    }
+
+    public function invoice()
+    {
+        return $this->hasOne(\App\Models\Invoice::class);
     }
 }
