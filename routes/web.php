@@ -160,6 +160,8 @@ Route::get('/invoices/{invoice}', function ($invoice) {
     return view('invoices.show', ['invoiceId' => $invoice]);
 })->middleware('auth')->name('invoices.show');
 
-
+Route::get('/api/docs', function () {
+    return view('swagger');
+});
 
 require __DIR__.'/auth.php';
