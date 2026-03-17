@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\Invoice;
+use App\Models\Warehouse;
+use App\Services\OrderService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class OrderApiController extends Controller
@@ -19,16 +22,30 @@ class OrderApiController extends Controller
         );
     }
 
-    public function show(Invoice $invoice)
+    public function show(Order $order)
     {
-        $invoice->load([
+        $order->load([
             'customer',
-            'order',
             'items.product',
-            'payments'
         ]);
 
-        return response()->json($invoice);
+        return new OrderResource($order);
+    }
+
+
+    public function store(Request $request, OrderService $orderService)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'warehouse_id' => 'required|exists:warehouses,id', // ✅ DODAJ
+        ]);
+
+        $order = $orderService->createDraftOrder(
+            $request->customer_id,
+            $request->warehouse_id // ✅ UPORABI REQUEST
+        );
+
+        return response()->json($order, 201);
     }
 
     public function invoicable()
@@ -68,14 +85,12 @@ class OrderApiController extends Controller
         ]);
 
         foreach ($order->items as $item) {
-
             $invoice->items()->create([
                 'product_id' => $item->product_id,
                 'quantity' => $item->quantity,
-                'price' => $item->price,
-                'subtotal' => $item->subtotal
+                'price' => $item->price_at_time,
+                'subtotal' => $item->price_at_time * $item->quantity
             ]);
-
         }
 
         return response()->json([

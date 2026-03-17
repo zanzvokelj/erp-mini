@@ -5,21 +5,20 @@ namespace Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Customer;
 use App\Models\Warehouse;
+
 class OrderFactory extends Factory
 {
     public function definition(): array
     {
         $date = fake()->dateTimeBetween('2026-01-01', 'now');
 
-
-
         return [
 
             'order_number' => 'ORD-' . fake()->unique()->numberBetween(10000,99999),
 
-            'customer_id' => Customer::inRandomOrder()->first()->id,
-
-            'warehouse_id' => Warehouse::inRandomOrder()->first()->id,
+            // ✅ FIX
+            'customer_id' => Customer::factory(),
+            'warehouse_id' => Warehouse::factory(),
 
             'status' => fake()->randomElement([
                 'draft','confirmed','shipped','completed'

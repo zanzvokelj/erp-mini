@@ -8,26 +8,28 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Customer;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\OrderService;
 use App\Services\ProductService;
+use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class OrderTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_order_confirmation_reduces_stock()
+    public function test_order_confirmation_does_not_reduce_stock_but_reserves()
     {
         $user = User::factory()->create();
-
         $this->actingAs($user);
 
         $product = Product::factory()->create();
-
         $customer = Customer::factory()->create();
+        $warehouse = Warehouse::factory()->create();
 
         $order = Order::factory()->create([
             'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
             'status' => 'draft'
         ]);
 
@@ -41,50 +43,82 @@ class OrderTest extends TestCase
 
         app(ProductService::class)->adjustStock(
             $product,
+            $warehouse->id,
             'in',
             100,
-            'restock',
-            null
+            'restock'
+        );
+
+        // ✅ reservation (NOW REQUIRES warehouse_id)
+        app(InventoryService::class)->reserveStock(
+            $product,
+            $order->id,
+            5,
+            $warehouse->id
         );
 
         app(OrderService::class)->confirmOrder($order);
 
+        // STOCK ostane isti
         $stock = app(ProductService::class)
             ->calculateCurrentStock($product);
 
-        $this->assertEquals(95, $stock);
+        $this->assertEquals(100, $stock);
+
+        // AVAILABLE se zmanjša
+        $available = app(InventoryService::class)
+            ->availableStock($product, $warehouse->id);
+
+        $this->assertEquals(95, $available);
     }
 
-    public function test_order_cannot_exceed_stock()
+    public function test_order_cannot_exceed_available_stock()
     {
         $user = User::factory()->create();
-
         $this->actingAs($user);
 
         $product = Product::factory()->create();
-
         $customer = Customer::factory()->create();
+        $warehouse = Warehouse::factory()->create();
 
         $order = Order::factory()->create([
             'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
             'status' => 'draft'
         ]);
 
         OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $product->id,
-            'quantity' => 10,
+            'quantity' => 5,
             'price_at_time' => 10,
             'cost_at_time' => 5
         ]);
 
+        // stock = 5
         app(ProductService::class)->adjustStock(
             $product,
+            $warehouse->id,
             'in',
             5,
-            'restock',
-            null
+            'restock'
         );
+
+        // reservation = 5
+        app(InventoryService::class)->reserveStock(
+            $product,
+            $order->id,
+            5,
+            $warehouse->id
+        );
+
+        // 🔥 change quantity in DB
+        $order->items()->update([
+            'quantity' => 10
+        ]);
+
+        // 🔥 KLJUČNO
+        $order->refresh();
 
         $this->expectException(\Exception::class);
 

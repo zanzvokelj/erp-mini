@@ -12,7 +12,7 @@ use App\Events\OrderConfirmed;
 use App\Models\OrderActivity;
 use App\Services\InventoryService;
 use App\Events\OrderShipped;
-
+use Illuminate\Support\Str;
 
 class OrderService
 {
@@ -30,7 +30,7 @@ class OrderService
     public function createDraftOrder(int $customerId, int $warehouseId): Order
     {
         $order = Order::create([
-            'order_number' => 'ORD-' . now()->timestamp,
+            'order_number' => 'ORD-' . Str::uuid(),
             'customer_id' => $customerId,
             'warehouse_id' => $warehouseId,
             'status' => 'draft'
@@ -69,7 +69,8 @@ class OrderService
             $this->inventoryService->reserveStock(
                 $product,
                 $order->id,
-                $quantity
+                $quantity,
+                $order->warehouse_id
             );
 
             $this->logActivity(
@@ -86,6 +87,10 @@ class OrderService
     {
         if ($order->status !== 'draft') {
             throw new \Exception('Only draft orders can be confirmed.');
+        }
+
+        if ($order->items()->count() === 0) {
+            throw new \Exception('Order must have at least one item.');
         }
 
         DB::transaction(function () use ($order) {
@@ -109,8 +114,10 @@ class OrderService
                     ->where('product_id', $product->id)
                     ->sum('quantity');
 
-                $available = $this->inventoryService->availableStock($product)
-                    + $reservedForOrder;
+                $available = $this->inventoryService->availableStock(
+                    $product,
+                    $order->warehouse_id
+                );
 
                 if ($available < $item->quantity) {
                     throw new \Exception(

@@ -24,23 +24,37 @@ class InventoryService
             ->sum('quantity');
     }
 
-    public function availableStock(Product $product): int
+    public function availableStock(Product $product, int $warehouseId = null): int
     {
-        $current = $this->productService
-            ->calculateCurrentStock($product);
+        $current = $warehouseId
+            ? $this->productService->calculateStockInWarehouse($product, $warehouseId)
+            : $this->productService->calculateCurrentStock($product);
 
-        $reserved = $this->reservedStock($product);
+        $reserved = StockReservation::where('product_id', $product->id)
+            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->sum('quantity');
 
         return $current - $reserved;
     }
 
-    public function reserveStock(Product $product, int $orderId, int $quantity): void
+    public function reserveStock(Product $product, int $orderId, int $quantity, int $warehouseId)
     {
+        $available = $this->availableStock($product, $warehouseId);
+
+        if ($quantity > $available) {
+            throw new \Exception("Not enough stock to reserve.");
+        }
+
         StockReservation::create([
             'product_id' => $product->id,
             'order_id' => $orderId,
+            'warehouse_id' => $warehouseId, // 🔥 TO JE KLJUČNO
             'quantity' => $quantity,
-            'expires_at' => now()->addMinutes(30) // reservation TTL
+            'expires_at' => now()->addMinutes(30)
         ]);
     }
 

@@ -19,12 +19,11 @@ class PurchaseOrderTest extends TestCase
     public function test_purchase_order_receiving_increases_stock()
     {
         $warehouse = Warehouse::factory()->create();
-
         $supplier = Supplier::factory()->create();
-
         $product = Product::factory()->create();
 
         $po = PurchaseOrder::create([
+            'po_number' => 'PO-' . rand(10000,99999), // ✅ FIX
             'supplier_id' => $supplier->id,
             'warehouse_id' => $warehouse->id,
             'status' => 'ordered'
