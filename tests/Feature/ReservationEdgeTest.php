@@ -53,4 +53,28 @@ class ReservationEdgeTest extends TestCase
 
         $this->assertEquals(100, $available);
     }
+
+    public function test_expired_reservation_releases_stock()
+    {
+        $product = Product::factory()->create();
+        $warehouse = \App\Models\Warehouse::factory()->create();
+        $order = \App\Models\Order::factory()->create([
+            'warehouse_id' => $warehouse->id
+        ]);
+
+        $reservation = \App\Models\StockReservation::create([
+            'product_id' => $product->id,
+            'order_id' => $order->id, // ✅ FIX
+            'warehouse_id' => $warehouse->id, // ✅ tudi to
+            'quantity' => 5,
+            'expires_at' => now()->subMinute()
+        ]);
+
+        app(\App\Services\InventoryService::class)
+            ->releaseExpiredReservations();
+
+        $this->assertDatabaseMissing('stock_reservations', [
+            'id' => $reservation->id
+        ]);
+    }
 }

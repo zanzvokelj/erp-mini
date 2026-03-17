@@ -124,4 +124,60 @@ class OrderTest extends TestCase
 
         app(OrderService::class)->confirmOrder($order);
     }
+
+    public function test_shipping_reduces_stock()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $product = Product::factory()->create();
+        $customer = Customer::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+
+        app(ProductService::class)->adjustStock(
+            $product,
+            $warehouse->id,
+            'in',
+            10,
+            'restock'
+        );
+
+        $orderService = app(OrderService::class);
+
+        $order = $orderService->createDraftOrder($customer->id, $warehouse->id);
+        $orderService->addItem($order, $product, 5);
+        $orderService->confirmOrder($order);
+        $orderService->shipOrder($order);
+
+        $stock = app(ProductService::class)
+            ->calculateCurrentStock($product);
+
+        $this->assertEquals(5, $stock);
+    }
+
+    public function test_order_fails_if_one_item_invalid()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $product1 = Product::factory()->create();
+        $product2 = Product::factory()->create();
+
+        $customer = Customer::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+
+        app(ProductService::class)->adjustStock($product1, $warehouse->id, 'in', 10, 'restock');
+        app(ProductService::class)->adjustStock($product2, $warehouse->id, 'in', 1, 'restock');
+
+        $orderService = app(OrderService::class);
+
+        $order = $orderService->createDraftOrder($customer->id, $warehouse->id);
+
+        $orderService->addItem($order, $product1, 5);
+
+        // this should fail
+        $this->expectException(\Exception::class);
+
+        $orderService->addItem($order, $product2, 5);
+    }
 }
