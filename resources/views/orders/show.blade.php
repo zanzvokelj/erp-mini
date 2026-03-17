@@ -368,7 +368,7 @@
 
                     load: function(query, callback) {
 
-                        fetch(`/api/products/search?q=${query}`)
+                        fetch(`/api/products/search?q=${query}&warehouse_id={{ $order->warehouse_id }}`)
                             .then(response => response.json())
                             .then(json => {
 

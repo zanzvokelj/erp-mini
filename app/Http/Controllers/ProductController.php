@@ -9,13 +9,25 @@ use Illuminate\Http\Request;
 use App\Services\InventoryForecastService;
 use App\Models\Warehouse;
 use App\Models\StockMovement;
+
 class ProductController extends Controller
 {
     public function index()
     {
+        $warehouseId = request('warehouse');
+
         $query = DB::table('products')
-            ->leftJoin('suppliers','products.supplier_id','=','suppliers.id')
-            ->leftJoin('stock_movements','products.id','=','stock_movements.product_id')
+            ->leftJoin('suppliers', 'products.supplier_id', '=', 'suppliers.id')
+
+            // ✅ FIX: warehouse-aware join
+            ->leftJoin('stock_movements', function ($join) use ($warehouseId) {
+                $join->on('products.id', '=', 'stock_movements.product_id');
+
+                if ($warehouseId) {
+                    $join->where('stock_movements.warehouse_id', $warehouseId);
+                }
+            })
+
             ->select(
                 'products.id',
                 'products.sku',
@@ -23,16 +35,19 @@ class ProductController extends Controller
                 'products.price',
                 'products.min_stock',
                 'suppliers.name as supplier_name',
+
+                // ✅ STOCK (warehouse-aware)
                 DB::raw("
-                COALESCE(SUM(
-                    CASE
-                        WHEN stock_movements.type = 'in' THEN stock_movements.quantity
-                        WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
-                        ELSE 0
-                    END
-                ),0) as stock
-            ")
+                    COALESCE(SUM(
+                        CASE
+                            WHEN stock_movements.type = 'in' THEN stock_movements.quantity
+                            WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
+                            ELSE 0
+                        END
+                    ),0) as stock
+                ")
             )
+
             ->groupBy(
                 'products.id',
                 'products.sku',
@@ -42,18 +57,22 @@ class ProductController extends Controller
                 'suppliers.name'
             );
 
-        /*
-        SEARCH
-        */
+        if (request('search')) {
 
-        if(request('search')) {
+            $search = trim(strtolower(request('search')));
 
-            $search = request('search');
+            $terms = array_filter(explode(' ', $search));
 
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($terms) {
 
-                $q->where('products.name','like','%'.$search.'%')
-                    ->orWhere('products.sku','like','%'.$search.'%');
+                foreach ($terms as $term) {
+
+                    $q->where(function ($sub) use ($term) {
+                        $sub->whereRaw('LOWER(products.name) LIKE ?', ['%' . $term . '%'])
+                            ->orWhereRaw('LOWER(products.sku) LIKE ?', ['%' . $term . '%']);
+                    });
+
+                }
 
             });
 
@@ -62,49 +81,46 @@ class ProductController extends Controller
         /*
         SUPPLIER FILTER
         */
-
-        if(request('supplier')) {
-            $query->where('products.supplier_id',request('supplier'));
+        if (request('supplier')) {
+            $query->where('products.supplier_id', request('supplier'));
         }
 
         /*
         PRICE FILTER
         */
-
-        if(request('min_price')) {
-            $query->where('products.price','>=',request('min_price'));
+        if (request('min_price')) {
+            $query->where('products.price', '>=', request('min_price'));
         }
 
-        if(request('max_price')) {
-            $query->where('products.price','<=',request('max_price'));
+        if (request('max_price')) {
+            $query->where('products.price', '<=', request('max_price'));
         }
 
         /*
         STATUS FILTER
         */
-
-        if(request('status') === 'low') {
+        if (request('status') === 'low') {
             $query->havingRaw("
-COALESCE(SUM(
-CASE
-WHEN stock_movements.type = 'in' THEN stock_movements.quantity
-WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
-ELSE 0
-END
-),0) < products.min_stock
-");
+                COALESCE(SUM(
+                    CASE
+                        WHEN stock_movements.type = 'in' THEN stock_movements.quantity
+                        WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
+                        ELSE 0
+                    END
+                ),0) < products.min_stock
+            ");
         }
 
-        if(request('status') === 'out') {
+        if (request('status') === 'out') {
             $query->havingRaw("
-COALESCE(SUM(
-CASE
-WHEN stock_movements.type = 'in' THEN stock_movements.quantity
-WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
-ELSE 0
-END
-),0) <= 0
-");
+                COALESCE(SUM(
+                    CASE
+                        WHEN stock_movements.type = 'in' THEN stock_movements.quantity
+                        WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
+                        ELSE 0
+                    END
+                ),0) <= 0
+            ");
         }
 
         $products = $query
@@ -114,7 +130,7 @@ END
         $suppliers = DB::table('suppliers')->get();
         $warehouses = Warehouse::orderBy('name')->get();
 
-        return view('products.index', compact('products', 'suppliers','warehouses'));
+        return view('products.index', compact('products', 'suppliers', 'warehouses'));
     }
 
     public function store(StoreProductRequest $request)
@@ -134,7 +150,6 @@ END
         $balance = 0;
 
         foreach ($movements as $movement) {
-
             if ($movement->type === 'in') {
                 $balance += $movement->quantity;
             } else {
@@ -146,29 +161,26 @@ END
 
         $currentStock = $balance;
 
-        // newest first
         $movements = $movements->reverse()->take(50);
 
-        // FORECAST
         $forecastService = new InventoryForecastService();
-
         $daysUntilOut = $forecastService->forecast($product);
 
         $warehouses = Warehouse::orderBy('name')->get();
 
         $warehouseStock = StockMovement::where('product_id', $product->id)
             ->selectRaw("
-        warehouse_id,
-        SUM(
-            CASE
-                WHEN type = 'in' THEN quantity
-                WHEN type = 'out' THEN -quantity
-                ELSE 0
-            END
-        ) as stock
-    ")
+                warehouse_id,
+                SUM(
+                    CASE
+                        WHEN type = 'in' THEN quantity
+                        WHEN type = 'out' THEN -quantity
+                        ELSE 0
+                    END
+                ) as stock
+            ")
             ->groupBy('warehouse_id')
-            ->pluck('stock','warehouse_id');
+            ->pluck('stock', 'warehouse_id');
 
         return view('products.show', [
             'product' => $product,
@@ -192,59 +204,45 @@ END
     public function search(Request $request)
     {
         $query = $request->input('q');
+        $warehouseId = $request->input('warehouse_id');
 
-        $products = DB::table('products')
-
-            ->select(
-                'products.id',
-                'products.name',
-                'products.sku',
-                'products.price',
-
-                DB::raw("
-            (
-                SELECT COALESCE(SUM(
-                    CASE
-                        WHEN type = 'in' THEN quantity
-                        WHEN type = 'out' THEN -quantity
-                    END
-                ),0)
-                FROM stock_movements
-                WHERE stock_movements.product_id = products.id
-            ) as stock
-            "),
-
-                DB::raw("
-            (
-                SELECT COALESCE(SUM(order_items.quantity),0)
-                FROM order_items
-                JOIN orders ON orders.id = order_items.order_id
-                WHERE order_items.product_id = products.id
-                AND orders.status IN ('draft','confirmed')
-            ) as reserved
-            ")
-            )
-
+        $products = Product::query()
             ->when($query, function ($q) use ($query) {
-
-                $q->where(function($sub) use ($query){
-
-                    $sub->where('products.name','like','%'.$query.'%')
-                        ->orWhere('products.sku','like','%'.$query.'%');
-
+                $q->where(function ($sub) use ($query) {
+                    $sub->where('name', 'like', "%{$query}%")
+                        ->orWhere('sku', 'like', "%{$query}%");
                 });
-
             })
-
-            ->orderBy('products.name')
+            ->limit(20)
             ->get();
 
-        $products->transform(function ($product) {
+        $productService = app(\App\Services\ProductService::class);
 
-            $product->available = $product->stock - $product->reserved;
+        $products = $products->map(function ($product) use ($warehouseId, $productService) {
 
-            return $product;
+            $stock = $warehouseId
+                ? $productService->calculateStockInWarehouse($product, $warehouseId)
+                : $productService->calculateCurrentStock($product);
 
+            $reserved = \App\Models\StockReservation::where('product_id', $product->id)
+                ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })
+                ->sum('quantity');
+
+            $available = $stock - $reserved;
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'price' => $product->price,
+                'stock' => $stock,
+                'reserved' => $reserved,
+                'available' => $available
+            ];
         });
 
         return response()->json($products);

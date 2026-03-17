@@ -29,15 +29,21 @@ class OrderService
 
     public function createDraftOrder(int $customerId, int $warehouseId): Order
     {
-        $order = Order::create([
-            'order_number' => 'ORD-' . Str::uuid(),
-            'customer_id' => $customerId,
-            'warehouse_id' => $warehouseId,
-            'status' => 'draft'
-        ]);
-        $this->logActivity($order, 'created', 'Order created');
+        return DB::transaction(function () use ($customerId, $warehouseId) {
 
-        return $order;
+            $orderNumber = $this->generateOrderNumber();
+
+            $order = Order::create([
+                'order_number' => $orderNumber,
+                'customer_id' => $customerId,
+                'warehouse_id' => $warehouseId,
+                'status' => 'draft'
+            ]);
+
+            $this->logActivity($order, 'created', 'Order created');
+
+            return $order;
+        });
     }
 
     public function addItem(Order $order, Product $product, int $quantity): OrderItem
@@ -118,7 +124,18 @@ class OrderService
                     $order->warehouse_id
                 );
 
-                if ($available < $item->quantity) {
+                $reservedForThisOrder = \App\Models\StockReservation::where('order_id', $order->id)
+                    ->where('product_id', $product->id)
+                    ->where('warehouse_id', $order->warehouse_id)
+                    ->where(function ($q) {
+                        $q->whereNull('expires_at')
+                            ->orWhere('expires_at', '>', now());
+                    })
+                    ->sum('quantity');
+
+                $effectiveAvailable = $available + $reservedForThisOrder;
+
+                if ($effectiveAvailable < $item->quantity) {
                     throw new \Exception(
                         "Insufficient stock for product {$product->name}"
                     );
@@ -277,5 +294,16 @@ class OrderService
             );
 
         });
+    }
+
+    protected function generateOrderNumber(): string
+    {
+        $lastOrder = Order::lockForUpdate()
+            ->orderByDesc('id')
+            ->first();
+
+        $nextNumber = ($lastOrder->id ?? 0) + 1;
+
+        return 'ORD-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
 }

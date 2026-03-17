@@ -28,37 +28,48 @@ class TransferService
 
         return DB::transaction(function () use ($product, $fromWarehouse, $toWarehouse, $quantity) {
 
-            $available = $this->productService
-                ->calculateStockInWarehouse($product, $fromWarehouse);
+            // 🔒 LOCK PRODUCT
+            $product = Product::where('id', $product->id)
+                ->lockForUpdate()
+                ->first();
+
+            // ✅ AVAILABLE (correct logic)
+            $available = app(\App\Services\InventoryService::class)
+                ->availableStock($product, $fromWarehouse);
 
             if ($available < $quantity) {
-                throw new \Exception('Not enough stock in source warehouse.');
+                throw new \Exception('Not enough available stock in source warehouse.');
             }
 
-            // OUT movement
-            $this->productService->adjustStock(
-                $product,
-                $fromWarehouse,
-                'out',
-                $quantity,
-                'transfer'
-            );
-
-            // IN movement
-            $this->productService->adjustStock(
-                $product,
-                $toWarehouse,
-                'in',
-                $quantity,
-                'transfer'
-            );
-
-            return WarehouseTransfer::create([
+            // 📦 CREATE TRANSFER FIRST
+            $transfer = WarehouseTransfer::create([
                 'product_id' => $product->id,
                 'from_warehouse_id' => $fromWarehouse,
                 'to_warehouse_id' => $toWarehouse,
                 'quantity' => $quantity
             ]);
+
+            // ⬇ OUT
+            $this->productService->adjustStock(
+                $product,
+                $fromWarehouse,
+                'out',
+                $quantity,
+                'transfer',
+                $transfer->id
+            );
+
+            // ⬆ IN
+            $this->productService->adjustStock(
+                $product,
+                $toWarehouse,
+                'in',
+                $quantity,
+                'transfer',
+                $transfer->id
+            );
+
+            return $transfer;
         });
     }
 }

@@ -54,6 +54,9 @@
             Finance
         </x-sidebar-link>
 
+        <x-sidebar-link href="/transfers">
+            Transfer
+        </x-sidebar-link>
     </nav>
 
 </div>

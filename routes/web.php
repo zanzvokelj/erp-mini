@@ -13,6 +13,7 @@ use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\OrderItem;
+use App\Http\Controllers\TransferController;
 
 
 Route::get('/', function () {
@@ -167,5 +168,15 @@ Route::get('/api/docs', function () {
 Route::get('/finance', function () {
     return view('finance.index');
 })->name('finance.index');
+
+
+Route::get('/transfers', [TransferController::class, 'index'])
+    ->name('transfers.index');
+
+Route::get('/transfers/create', [TransferController::class, 'create'])
+    ->name('transfers.create');
+
+Route::post('/transfers', [TransferController::class, 'store'])
+    ->name('transfers.store');
 
 require __DIR__.'/auth.php';
