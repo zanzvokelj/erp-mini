@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ProductApiController;
 use App\Http\Controllers\Api\V1\OrderApiController;
 use App\Http\Controllers\Api\V1\CustomerApiController;
@@ -11,37 +13,77 @@ use App\Http\Controllers\Api\V1\PaymentApiController;
 
 Route::prefix('v1')->group(function () {
 
-    Route::get('/products', [ProductApiController::class, 'index']);
-    Route::get('/products/{product}', [ProductApiController::class, 'show']);
-    Route::get('/products/{product}/stock-history', [ProductApiController::class, 'stockHistory']);
+    /*
+    |--------------------------------------------------------------------------
+    | PUBLIC ROUTES
+    |--------------------------------------------------------------------------
+    */
 
-    Route::get('/orders/invoicable', [OrderApiController::class, 'invoicable']);
+    Route::post('/login', [AuthController::class, 'login']);
 
-    Route::get('/orders', [OrderApiController::class, 'index']);
-    Route::get('/orders/{order}', [OrderApiController::class, 'show']);
-    Route::post('/orders', [OrderApiController::class, 'store']);
-    Route::post('/orders/{order}/items', [OrderApiController::class, 'addItem']);
-    Route::patch('/orders/items/{item}', [OrderApiController::class, 'updateItem']);
-    Route::delete('/orders/items/{item}', [OrderApiController::class, 'removeItem']);
-    Route::post('/orders/{order}/confirm', [OrderApiController::class, 'confirm']);
-    Route::post('/orders/{order}/ship', [OrderApiController::class, 'ship']);
-    Route::post('/orders/{order}/complete', [OrderApiController::class, 'complete']);
-    Route::post('/orders/{order}/cancel', [OrderApiController::class, 'cancel']);
+    /*
+    |--------------------------------------------------------------------------
+    | PROTECTED ROUTES
+    |--------------------------------------------------------------------------
+    */
 
-    Route::get('/customers', [CustomerApiController::class, 'index']);
-    Route::get('/customers/{customer}', [CustomerApiController::class, 'show']);
+    Route::middleware('auth:sanctum')->group(function () {
 
-    Route::get('/suppliers', [SupplierApiController::class, 'index']);
-    Route::get('/suppliers/{supplier}', [SupplierApiController::class, 'show']);
+        Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::get('/inventory', [InventoryApiController::class, 'index']);
-    Route::post('/inventory/adjust', [InventoryApiController::class, 'adjust']);
-    Route::get('/stock-movements', [InventoryApiController::class, 'movements']);
+        // PRODUCTS
+        Route::controller(ProductApiController::class)->group(function () {
+            Route::get('/products', 'index');
+            Route::get('/products/{product}', 'show');
+            Route::get('/products/{product}/stock-history', 'stockHistory');
+        });
 
-    Route::get('/invoices', [InvoiceApiController::class, 'index']);
-    Route::get('/invoices/{invoice}', [InvoiceApiController::class, 'show']);
-    Route::get('/invoices/{invoice}/pdf', [InvoiceApiController::class, 'pdf']);
-    Route::post('/invoices/{invoice}/payments', [PaymentApiController::class, 'store']);
-    Route::get('/invoices/overdue', [InvoiceApiController::class, 'overdue']);
+        // ORDERS
+        Route::controller(OrderApiController::class)->group(function () {
+            Route::get('/orders/invoicable', 'invoicable');
+            Route::get('/orders', 'index');
+            Route::get('/orders/{order}', 'show');
+            Route::post('/orders', 'store');
+            Route::post('/orders/{order}/items', 'addItem');
+            Route::patch('/orders/items/{item}', 'updateItem');
+            Route::delete('/orders/items/{item}', 'removeItem');
+            Route::post('/orders/{order}/confirm', 'confirm');
+            Route::post('/orders/{order}/ship', 'ship');
+            Route::post('/orders/{order}/complete', 'complete');
+            Route::post('/orders/{order}/cancel', 'cancel');
+        });
 
+        // CUSTOMERS
+        Route::controller(CustomerApiController::class)->group(function () {
+            Route::get('/customers', 'index');
+            Route::get('/customers/{customer}', 'show');
+        });
+
+        // SUPPLIERS
+        Route::controller(SupplierApiController::class)->group(function () {
+            Route::get('/suppliers', 'index');
+            Route::get('/suppliers/{supplier}', 'show');
+        });
+
+        // INVENTORY
+        Route::controller(InventoryApiController::class)->group(function () {
+            Route::get('/inventory', 'index');
+            Route::post('/inventory/adjust', 'adjust');
+            Route::get('/stock-movements', 'movements');
+        });
+
+        // INVOICES
+        Route::controller(InvoiceApiController::class)->group(function () {
+            Route::get('/invoices', 'index');
+            Route::get('/invoices/{invoice}', 'show');
+            Route::get('/invoices/{invoice}/pdf', 'pdf');
+            Route::get('/invoices/overdue', 'overdue');
+        });
+
+        // PAYMENTS
+        Route::controller(PaymentApiController::class)->group(function () {
+            Route::post('/invoices/{invoice}/payments', 'store');
+        });
+
+    });
 });

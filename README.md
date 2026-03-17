@@ -358,6 +358,91 @@ php artisan test
 
 ---
 
+# 🔐 API Authentication & 📘 API Documentation
+
+## 🔐 API Authentication
+
+The system uses **token-based authentication with Laravel Sanctum** to secure all API endpoints.
+
+### Flow:
+
+1. User logs in via API
+2. Backend returns a personal access token
+3. Token is sent with every request
+
+Authorization: Bearer {token}
+
+### Example:
+
+POST /api/v1/login
+
+Response:
+
+{
+"token": "your-access-token",
+"user": {
+"id": 1,
+"email": "user@example.com"
+}
+}
+
+### Protected Routes
+
+All core endpoints are protected using:
+
+auth:sanctum
+
+This ensures:
+
+- only authenticated users can access data
+- secure order and inventory operations
+- safe API usage for frontend and mobile apps
+
+### Logout
+
+POST /api/v1/logout
+
+Invalidates the current token.
+
+---
+
+## 📘 API Documentation (OpenAPI / Swagger)
+
+The project includes a fully documented API using the **OpenAPI 3.0 specification**.
+
+Interactive documentation is available via Swagger UI:
+
+http://127.0.0.1:8000/api/docs
+
+### Features:
+
+- interactive endpoint testing
+- request/response schemas
+- authentication support (Bearer token)
+- grouped endpoints by domain (Products, Orders, Inventory, etc.)
+
+### Authentication in Swagger
+
+1. Call /login endpoint
+2. Copy the returned token
+3. Click Authorize
+4. Enter:
+
+Bearer {token}
+
+Swagger will automatically attach the token to all protected requests.
+
+---
+
+## 🧠 Developer Experience
+
+To improve development workflow, Swagger authorization can be persisted:
+
+'persist_authorization' => true
+
+This keeps the user authenticated even after page refresh (development only).
+
+
 ## 🎯 Purpose
 
 This project demonstrates how to design a realistic backend system beyond CRUD applications with:

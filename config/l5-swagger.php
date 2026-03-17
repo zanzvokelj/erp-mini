@@ -81,7 +81,7 @@ return [
                 'filter' => true,
             ],
             'authorization' => [
-                'persist_authorization' => false,
+                'persist_authorization' => true,
                 'oauth2' => [
                     'use_pkce_with_authorization_code_grant' => false,
                 ],
