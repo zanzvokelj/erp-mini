@@ -250,6 +250,56 @@ Background jobs:
 
 ---
 
+### ⚡ Event-Driven Architecture
+
+The system uses an event-driven approach to decouple core business logic from side effects.
+
+### Events
+
+- OrderConfirmed
+- OrderShipped
+
+### Example Flow
+
+Order confirmation triggers:
+
+OrderConfirmed → LowStockAlertJob
+
+Order shipping triggers:
+
+OrderShipped →
+- GenerateInvoiceFromOrder
+- SendShippingNotification
+
+### Benefits
+
+- decoupled architecture
+- easier scalability
+- async processing with queues
+- clean separation of concerns
+
+---
+
+### 🧵 Queue Jobs
+
+The system uses background jobs for asynchronous processing:
+
+- LowStockAlertJob → checks inventory thresholds
+- MonthlyReportJob → generates revenue analytics
+- ReleaseExpiredReservationsJob → cleans expired reservations
+
+Jobs are processed using Laravel queues.
+
+---
+
+### 🔁 Real-World Analogy
+
+This architecture follows patterns used in modern systems:
+
+- event-driven systems (e.g. Kafka-based systems)
+- microservice communication patterns
+- asynchronous processing pipelines
+
 ### 📊 Dashboard Analytics
 
 Provides:
@@ -452,6 +502,50 @@ This project demonstrates how to design a realistic backend system beyond CRUD a
 - scalable architecture
 
 ---
+
+## 🚀 New Features
+
+### 🔄 Warehouse Transfers
+- Transfer stock between warehouses
+- Automatically creates:
+    - OUT movement from source warehouse
+    - IN movement to destination warehouse
+- Ensures stock consistency with database transactions
+- Prevents transfer if insufficient stock
+
+### 📦 Warehouse-based Inventory
+- Stock is tracked per warehouse using stock movements
+- Products do not belong to a single warehouse
+- Real-time stock calculation:
+    - Global stock
+    - Per-warehouse stock
+
+### 📊 Stock Movement Ledger
+- Full audit trail of all stock changes
+- Includes:
+    - Transfers
+    - Orders
+    - Manual adjustments
+- Each movement includes:
+    - Type (IN / OUT)
+    - Quantity
+    - Warehouse
+    - Reference
+
+### 🔍 Advanced Product Search
+- Multi-term search (e.g. "monitor arm")
+- Search by:
+    - Name
+    - SKU
+
+### 🧠 Inventory Forecast
+- Predicts when stock will run out
+- Based on historical consumption
+
+### 📦 SKU Support
+- Each product has a unique SKU
+- Used for precise identification
+
 
 ## 👨‍💻 Author
 
