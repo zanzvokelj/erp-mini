@@ -10,42 +10,6 @@ use App\Models\StockMovement;
 use OpenApi\Annotations as OA;
 class ProductApiController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/products",
-     *     summary="List products",
-     *     tags={"Products"},
-     *
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search products by name or SKU",
-     *         required=false,
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="supplier",
-     *         in="query",
-     *         description="Filter by supplier ID",
-     *         required=false,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Items per page",
-     *         required=false,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="List of products"
-     *     )
-     * )
-     */
     public function index()
     {
         $query = Product::query()->with('supplier');
@@ -68,25 +32,6 @@ class ProductApiController extends Controller
         );
     }
 
-    /**
-     * @OA\Get(
-     *     path="/products/{id}",
-     *     summary="Get product",
-     *     tags={"Products"},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Product details"
-     *     )
-     * )
-     */
     public function show(Product $product)
     {
         $product->load('supplier');

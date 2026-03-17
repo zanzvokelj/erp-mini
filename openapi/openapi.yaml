@@ -1,0 +1,1019 @@
+openapi: 3.0.3
+
+info:
+  title: Mini ERP API
+  version: 1.0.0
+  description: |
+    Transaction-safe Inventory & Order Management API built with Laravel.
+
+    Main capabilities:
+    - ledger-based stock tracking
+    - multi-warehouse inventory
+    - stock reservations
+    - order lifecycle management
+    - invoice and payment handling
+
+servers:
+  - url: http://localhost/api/v1
+    description: Local development
+
+tags:
+  - name: Products
+  - name: Orders
+  - name: Customers
+  - name: Suppliers
+  - name: Inventory
+  - name: Invoices
+  - name: Payments
+
+paths:
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List products
+      description: Returns a paginated list of products.
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - name: supplier
+          in: query
+          description: Filter by supplier ID
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedProductsResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /products/{product}:
+    get:
+      tags: [Products]
+      summary: Get product
+      description: Returns a single product by ID.
+      parameters:
+        - $ref: "#/components/parameters/ProductIdParam"
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /products/{product}/stock-history:
+    get:
+      tags: [Products]
+      summary: Get product stock history
+      description: Returns stock movement history for a single product.
+      parameters:
+        - $ref: "#/components/parameters/ProductIdParam"
+      responses:
+        "200":
+          description: Product stock history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product:
+                    $ref: "#/components/schemas/Product"
+                  movements:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StockMovement"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List orders
+      description: Returns a paginated list of orders with customer and item data.
+      responses:
+        "200":
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedOrdersResponse"
+
+    post:
+      tags: [Orders]
+      summary: Create draft order
+      description: Creates a new draft order for a customer and warehouse.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /orders/{order}:
+    get:
+      tags: [Orders]
+      summary: Get order
+      description: Returns a single order with customer and items.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders/invoicable:
+    get:
+      tags: [Orders]
+      summary: List invoicable orders
+      description: Returns shipped orders that do not yet have an invoice.
+      responses:
+        "200":
+          description: Invoicable orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InvoicableOrder"
+
+  /orders/{order}/items:
+    post:
+      tags: [Orders]
+      summary: Add item to order
+      description: Adds an item to an order and reserves stock if available.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddOrderItemRequest"
+      responses:
+        "200":
+          description: Order item added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItem"
+        "400":
+          $ref: "#/components/responses/BusinessRuleError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /orders/items/{item}:
+    patch:
+      tags: [Orders]
+      summary: Update order item
+      description: Updates the quantity or details of an order item.
+      parameters:
+        - $ref: "#/components/parameters/OrderItemIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderItemRequest"
+      responses:
+        "200":
+          description: Order item updated
+        "400":
+          $ref: "#/components/responses/BusinessRuleError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+    delete:
+      tags: [Orders]
+      summary: Remove order item
+      description: Removes an item from an order.
+      parameters:
+        - $ref: "#/components/parameters/OrderItemIdParam"
+      responses:
+        "200":
+          description: Order item removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders/{order}/confirm:
+    post:
+      tags: [Orders]
+      summary: Confirm order
+      description: Confirms a draft order if business rules pass.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: Order confirmed
+        "400":
+          $ref: "#/components/responses/BusinessRuleError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders/{order}/ship:
+    post:
+      tags: [Orders]
+      summary: Ship order
+      description: Ships a confirmed order and creates an invoice if applicable in your workflow.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: Order shipped / invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipOrderResponse"
+        "400":
+          $ref: "#/components/responses/BusinessRuleError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders/{order}/complete:
+    post:
+      tags: [Orders]
+      summary: Complete order
+      description: Marks an order as completed.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: Order completed
+        "400":
+          $ref: "#/components/responses/BusinessRuleError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders/{order}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel order
+      description: Cancels a draft or confirmed order and releases reservations.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: Order cancelled
+        "400":
+          $ref: "#/components/responses/BusinessRuleError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /customers:
+    get:
+      tags: [Customers]
+      summary: List customers
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCustomersResponse"
+
+  /customers/{customer}:
+    get:
+      tags: [Customers]
+      summary: Get customer
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+      responses:
+        "200":
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      summary: List suppliers
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Supplier list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedSuppliersResponse"
+
+  /suppliers/{supplier}:
+    get:
+      tags: [Suppliers]
+      summary: Get supplier
+      parameters:
+        - $ref: "#/components/parameters/SupplierIdParam"
+      responses:
+        "200":
+          description: Supplier details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: Get inventory overview
+      description: Returns current stock per product with optional low/out filtering.
+      parameters:
+        - name: status
+          in: query
+          description: Filter by stock status
+          schema:
+            type: string
+            enum: [low, out]
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Inventory overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInventoryResponse"
+
+  /inventory/adjust:
+    post:
+      tags: [Inventory]
+      summary: Adjust stock manually
+      description: Creates a manual stock movement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InventoryAdjustRequest"
+      responses:
+        "200":
+          description: Stock adjusted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /stock-movements:
+    get:
+      tags: [Inventory]
+      summary: List stock movements
+      responses:
+        "200":
+          description: Paginated stock movements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedStockMovementsResponse"
+
+  /invoices:
+    get:
+      tags: [Invoices]
+      summary: List invoices
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, partial, paid]
+      responses:
+        "200":
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInvoicesResponse"
+
+  /invoices/overdue:
+    get:
+      tags: [Invoices]
+      summary: List overdue invoices
+      responses:
+        "200":
+          description: Overdue invoices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInvoicesResponse"
+
+  /invoices/{invoice}:
+    get:
+      tags: [Invoices]
+      summary: Get invoice
+      parameters:
+        - $ref: "#/components/parameters/InvoiceIdParam"
+      responses:
+        "200":
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /invoices/{invoice}/pdf:
+    get:
+      tags: [Invoices]
+      summary: Download invoice PDF
+      parameters:
+        - $ref: "#/components/parameters/InvoiceIdParam"
+      responses:
+        "200":
+          description: PDF file download
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /invoices/{invoice}/payments:
+    post:
+      tags: [Payments]
+      summary: Add payment to invoice
+      parameters:
+        - $ref: "#/components/parameters/InvoiceIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "200":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+components:
+
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+
+  parameters:
+    SearchParam:
+      name: search
+      in: query
+      schema:
+        type: string
+      description: Search term
+
+    PerPageParam:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        default: 20
+      description: Number of items per page
+
+    ProductIdParam:
+      name: product
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    OrderIdParam:
+      name: order
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    OrderItemIdParam:
+      name: item
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    CustomerIdParam:
+      name: customer
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    SupplierIdParam:
+      name: supplier
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    InvoiceIdParam:
+      name: invoice
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorResponse"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    BusinessRuleError:
+      description: Business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        from:
+          type: integer
+          nullable: true
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        to:
+          type: integer
+          nullable: true
+        total:
+          type: integer
+
+    PaginationLinks:
+      type: object
+      properties:
+        first:
+          type: string
+          nullable: true
+        last:
+          type: string
+          nullable: true
+        prev:
+          type: string
+          nullable: true
+        next:
+          type: string
+          nullable: true
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string
+          nullable: true
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        sku:
+          type: string
+        price:
+          type: number
+          format: float
+        cost_price:
+          type: number
+          format: float
+        min_stock:
+          type: integer
+        supplier_id:
+          type: integer
+          nullable: true
+        supplier:
+          $ref: "#/components/schemas/Supplier"
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+        price_at_time:
+          type: number
+          format: float
+        cost_at_time:
+          type: number
+          format: float
+        product:
+          $ref: "#/components/schemas/Product"
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_number:
+          type: string
+        customer_id:
+          type: integer
+        warehouse_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [draft, confirmed, shipped, completed, cancelled, returned]
+        subtotal:
+          type: number
+          format: float
+        discount_total:
+          type: number
+          format: float
+        total:
+          type: number
+          format: float
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+
+    InvoicableOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_number:
+          type: string
+        customer_id:
+          type: integer
+        total:
+          type: number
+          format: float
+        customer:
+          $ref: "#/components/schemas/Customer"
+
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        sku:
+          type: string
+        name:
+          type: string
+        min_stock:
+          type: integer
+        stock:
+          type: integer
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        warehouse_id:
+          type: integer
+          nullable: true
+        type:
+          type: string
+          enum: [in, out]
+        quantity:
+          type: integer
+        reference_type:
+          type: string
+          nullable: true
+        reference_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    InvoiceItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        invoice_id:
+          type: integer
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+        price:
+          type: number
+          format: float
+        subtotal:
+          type: number
+          format: float
+        product:
+          $ref: "#/components/schemas/Product"
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        invoice_id:
+          type: integer
+        amount:
+          type: number
+          format: float
+        payment_method:
+          type: string
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+        invoice_number:
+          type: string
+        order_id:
+          type: integer
+        customer_id:
+          type: integer
+        status:
+          type: string
+          enum: [draft, partial, paid]
+        subtotal:
+          type: number
+          format: float
+        tax:
+          type: number
+          format: float
+        total:
+          type: number
+          format: float
+        issued_at:
+          type: string
+          format: date-time
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        customer:
+          $ref: "#/components/schemas/Customer"
+        order:
+          $ref: "#/components/schemas/Order"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+
+    CreateOrderRequest:
+      type: object
+      required: [customer_id, warehouse_id]
+      properties:
+        customer_id:
+          type: integer
+        warehouse_id:
+          type: integer
+
+    AddOrderItemRequest:
+      type: object
+      required: [product_id, quantity]
+      properties:
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+
+    UpdateOrderItemRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+
+    InventoryAdjustRequest:
+      type: object
+      required: [product_id, type, quantity]
+      properties:
+        product_id:
+          type: integer
+        type:
+          type: string
+          enum: [in, out]
+        quantity:
+          type: integer
+          minimum: 1
+
+    CreatePaymentRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          format: float
+        payment_method:
+          type: string
+          nullable: true
+
+    ShipOrderResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        invoice_id:
+          type: integer
+
+    PaginatedProductsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedOrdersResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedCustomersResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedSuppliersResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Supplier"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedInventoryResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryItem"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedInvoicesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Invoice"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedStockMovementsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockMovement"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
