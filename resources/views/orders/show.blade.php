@@ -295,16 +295,33 @@
             @endif
 
 
-            @if($order->status === 'shipped')
+                @php
+                    $invoice = $order->invoice;
+                    $isPaid = $invoice && $invoice->status === 'paid';
+                @endphp
 
-                <form method="POST" action="{{ route('orders.complete', $order) }}">
-                    @csrf
-                    <button class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">
-                        Mark as Completed
-                    </button>
-                </form>
+                @if($order->status === 'shipped')
 
-            @endif
+                    <form method="POST" action="{{ route('orders.complete', $order) }}">
+                        @csrf
+
+                        <button
+                            class="px-4 py-2 rounded text-sm
+            {{ $isPaid ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed' }}"
+                            {{ $isPaid ? '' : 'disabled' }}
+                        >
+                            Mark as Completed
+                        </button>
+
+                    </form>
+
+                @endif
+
+                @if($order->status === 'shipped' && !$isPaid)
+                    <p class="text-xs text-gray-500 mt-2">
+                        Order must be fully paid before completion
+                    </p>
+                @endif
 
 
             @if($order->status === 'completed')

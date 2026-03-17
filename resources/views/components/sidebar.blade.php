@@ -50,6 +50,10 @@
             Invoices
             </x-sidebar-link>
 
+        <x-sidebar-link href="/finance">
+            Finance
+        </x-sidebar-link>
+
     </nav>
 
 </div>

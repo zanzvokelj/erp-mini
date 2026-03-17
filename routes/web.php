@@ -164,4 +164,8 @@ Route::get('/api/docs', function () {
     return view('swagger');
 });
 
+Route::get('/finance', function () {
+    return view('finance.index');
+})->name('finance.index');
+
 require __DIR__.'/auth.php';

@@ -48,30 +48,65 @@ class OrderApiController extends Controller
         return response()->json($order, 201);
     }
 
-    public function invoicable()
+    public function invoicable(Request $request)
     {
-        return Order::with('customer')
+        $query = Order::with('customer')
             ->where('status', 'shipped')
-            ->doesntHave('invoice')
-            ->latest()
-            ->limit(50)
-            ->get([
-                'id',
-                'order_number',
-                'customer_id',
-                'total'
-            ]);
+            ->doesntHave('invoice');
+
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('order_number', 'like', '%' . $request->search . '%')
+                    ->orWhereHas('customer', function ($q2) use ($request) {
+                        $q2->where('name', 'like', '%' . $request->search . '%');
+                    });
+            });
+        }
+
+        return $query->latest()
+            ->limit(20)
+            ->get()
+            ->map(function ($o) {
+                return [
+                    'id' => $o->id,
+                    'label' => "{$o->order_number} — {$o->customer->name} — €" . number_format($o->total,2)
+                ];
+            });
     }
 
     public function ship(Order $order)
     {
-        $order->load('items.product');
+        if ($order->status !== 'confirmed') {
+            return response()->json([
+                'error' => 'Only confirmed orders can be shipped'
+            ], 422);
+        }
+
+        $order->update([
+            'status' => 'shipped'
+        ]);
+
+        return response()->json([
+            'message' => 'Order shipped successfully'
+        ]);
+    }
+
+
+    public function createInvoice(Order $order)
+    {
+        if ($order->status !== 'shipped') {
+            return response()->json([
+                'error' => 'Order must be shipped before invoicing'
+            ], 422);
+        }
 
         if ($order->invoice) {
             return response()->json([
-                'message' => 'Invoice already exists'
+                'error' => 'Invoice already exists'
             ], 400);
         }
+
+        $order->load('items.product');
 
         $invoice = Invoice::create([
             'invoice_number' => 'INV-' . Str::random(12),
@@ -98,4 +133,6 @@ class OrderApiController extends Controller
             'invoice_id' => $invoice->id
         ]);
     }
+
+
 }

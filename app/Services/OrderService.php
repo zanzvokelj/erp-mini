@@ -89,18 +89,21 @@ class OrderService
             throw new \Exception('Only draft orders can be confirmed.');
         }
 
-        if ($order->items()->count() === 0) {
+        $order->load('items');
+
+        if ($order->items->count() === 0) {
             throw new \Exception('Order must have at least one item.');
         }
 
         DB::transaction(function () use ($order) {
+
 
             $order->load('items');
 
             // 1️⃣ collect product ids
             $productIds = $order->items->pluck('product_id');
 
-            // 2️⃣ lock ALL products in one query
+            // 2️⃣ lock ALL products
             $products = Product::whereIn('id', $productIds)
                 ->lockForUpdate()
                 ->get()
@@ -109,10 +112,6 @@ class OrderService
             foreach ($order->items as $item) {
 
                 $product = $products[$item->product_id];
-
-                $reservedForOrder = $order->items
-                    ->where('product_id', $product->id)
-                    ->sum('quantity');
 
                 $available = $this->inventoryService->availableStock(
                     $product,
@@ -124,27 +123,20 @@ class OrderService
                         "Insufficient stock for product {$product->name}"
                     );
                 }
-
             }
 
-
-
-            // 5️⃣ calculate totals
+            //  totals
             $this->calculateTotals($order);
 
-            // 6️⃣ update order status
+            // update status
             $order->update([
                 'status' => 'confirmed',
                 'confirmed_at' => now()
             ]);
 
             $this->logActivity($order, 'confirmed', 'Order confirmed');
-
         });
-
-        event(new OrderConfirmed($order));
     }
-
     public function calculateTotals(Order $order): void
     {
         $order->load('items');
