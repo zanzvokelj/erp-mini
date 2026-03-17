@@ -372,6 +372,145 @@ Use cases:
 
 ---
 
+### 🧮 Warehouse-Aware Stock Calculation
+
+Stock is dynamically calculated per warehouse using filtered stock movements.
+
+Example:
+
+SELECT SUM(
+CASE
+WHEN type = 'in' THEN quantity
+WHEN type = 'out' THEN -quantity
+END
+)
+FROM stock_movements
+WHERE product_id = ? AND warehouse_id = ?
+
+This allows:
+
+- accurate per-warehouse stock tracking
+- flexible filtering in UI
+- scalable inventory design
+
+---
+
+### ⚠️ No Stored Stock Field
+
+The system does NOT store stock directly in the products table.
+
+Instead, stock is calculated dynamically from stock movements.
+
+Benefits:
+
+- eliminates data inconsistency
+- avoids race conditions
+- ensures single source of truth
+
+
+---
+
+### 🧠 SQL-Driven Filtering
+
+Advanced filtering is performed at the database level using GROUP BY and HAVING clauses.
+
+Examples:
+
+- low stock filtering
+- out of stock detection
+
+This ensures:
+
+- high performance
+- reduced application-level processing
+
+
+---
+### 🔁 Double-Entry Inventory Transfers
+
+Warehouse transfers follow a double-entry pattern:
+
+- OUT movement from source warehouse
+- IN movement to destination warehouse
+
+This ensures:
+
+- consistency
+- full traceability
+- accounting-style correctness
+
+---
+
+### 🔗 Movement References
+
+Each stock movement includes a reference field linking it to its origin:
+
+- orders
+- transfers
+- purchase orders
+
+This enables:
+
+- traceability
+- auditability
+- debugging
+
+---
+
+### 📈 Running Balance Calculation
+
+Stock history includes a running balance for each movement.
+
+This allows:
+
+- visual tracking of stock changes over time
+- easier debugging
+- audit-friendly reporting
+
+---
+
+### 🔐 Concurrency-Safe Inventory Updates
+
+Critical operations use row-level locking:
+
+SELECT ... FOR UPDATE
+
+This ensures:
+
+- no race conditions
+- accurate stock under concurrent requests
+
+---
+
+### ⏳ Reservation Expiration
+
+Expired reservations are automatically cleaned up via a background job.
+
+This prevents:
+
+- stale reservations
+- locked inventory
+
+---
+
+
+### 🧱 Domain Separation
+
+Business logic is split into specialized services:
+
+- ProductService → stock calculations
+- InventoryService → reservations and availability
+- OrderService → order lifecycle
+
+This improves:
+
+- maintainability
+- testability
+- scalability
+
+
+---
+
 ## 🧪 Testing
 
 The system includes a comprehensive automated test suite.
