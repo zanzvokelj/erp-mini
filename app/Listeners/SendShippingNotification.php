@@ -11,10 +11,8 @@ class SendShippingNotification implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public function handle(OrderShipped $event): void
+    public function __invoke(OrderShipped $event): void
     {
-        $order = $event->order;
-
-        Log::info("Order {$order->id} shipped for {$order->customer->name}");
+        Log::info("SHIPPING LISTENER RUN " . uniqid());
     }
 }

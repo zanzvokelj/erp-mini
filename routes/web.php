@@ -38,6 +38,13 @@ Route::post('/orders', [OrderController::class, 'store'])
     ->middleware(['auth','role:sales'])
     ->name('orders.store');
 
+
+Route::get('/orders/export', [OrderController::class, 'export'])
+    ->name('orders.export');
+
+Route::get('/orders/{order}/activity', [OrderController::class, 'activity'])
+    ->name('orders.activity');
+
 Route::get('/orders/{order}', [OrderController::class, 'show'])
     ->middleware('auth')
     ->name('orders.show');
@@ -178,5 +185,7 @@ Route::get('/transfers/create', [TransferController::class, 'create'])
 
 Route::post('/transfers', [TransferController::class, 'store'])
     ->name('transfers.store');
+
+
 
 require __DIR__.'/auth.php';

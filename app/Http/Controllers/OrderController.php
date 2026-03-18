@@ -250,4 +250,43 @@ class OrderController extends Controller
         }
     }
 
+    public function export()
+    {
+        $orders = \App\Models\Order::with('customer')->get();
+
+        $filename = 'orders.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename={$filename}",
+        ];
+
+        $callback = function () use ($orders) {
+            $file = fopen('php://output', 'w');
+
+            // header
+            fputcsv($file, [
+                'Order Number',
+                'Customer',
+                'Status',
+                'Total',
+                'Date'
+            ]);
+
+            foreach ($orders as $order) {
+                fputcsv($file, [
+                    $order->order_number,
+                    $order->customer->name ?? '',
+                    $order->status,
+                    $order->total,
+                    $order->created_at
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
 }

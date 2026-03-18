@@ -12,21 +12,11 @@ use App\Listeners\SendShippingNotification;
 
 class EventServiceProvider extends ServiceProvider
 {
-    protected $listen = [
+    protected static $shouldDiscoverEvents = false;
 
+    protected $listen = [
         OrderConfirmed::class => [
             HandleOrderConfirmed::class,
         ],
-
-        OrderShipped::class => [
-            SendShippingNotification::class,
-            \App\Listeners\GenerateInvoiceFromOrder::class,
-        ],
-
     ];
-
-    public function shouldDiscoverEvents()
-    {
-        return false;
-    }
 }

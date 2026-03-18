@@ -35,7 +35,13 @@
                 Create Order
             </a>
 
+
         </div>
+        <!-- EXPORT BUTTON -->
+        <a href="{{ route('orders.export') }}"
+           class="px-3 py-2 mt-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700">
+            Export CSV
+        </a>
 
 
         <!-- Filters -->

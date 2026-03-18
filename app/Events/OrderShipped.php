@@ -15,5 +15,6 @@ class OrderShipped
     public function __construct(Order $order)
     {
         $this->order = $order;
+        \Log::info('OrderShipped EVENT CONSTRUCTED ' . $order->id);
     }
 }

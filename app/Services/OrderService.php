@@ -211,6 +211,7 @@ class OrderService
 
     public function shipOrder(Order $order): void
     {
+        \Log::info('SHIP ORDER CALLED ' . $order->id);
         if ($order->status !== 'confirmed') {
             throw new \Exception('Only confirmed orders can be shipped.');
         }

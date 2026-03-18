@@ -25,6 +25,7 @@
             <span class="font-semibold text-gray-800">
                 #{{ $order->order_number }}
             </span>
+
         </div>
 
 
