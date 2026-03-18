@@ -4,130 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Http\Requests\StoreProductRequest;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Services\InventoryForecastService;
+use App\Services\ProductQueryService;
 use App\Models\Warehouse;
 use App\Models\StockMovement;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(ProductQueryService $productQuery)
     {
-        $warehouseId = request('warehouse');
+        $products = $productQuery->getProducts(request()->all());
 
-        $query = DB::table('products')
-            ->leftJoin('suppliers', 'products.supplier_id', '=', 'suppliers.id')
-
-            // ✅ FIX: warehouse-aware join
-            ->leftJoin('stock_movements', function ($join) use ($warehouseId) {
-                $join->on('products.id', '=', 'stock_movements.product_id');
-
-                if ($warehouseId) {
-                    $join->where('stock_movements.warehouse_id', $warehouseId);
-                }
-            })
-
-            ->select(
-                'products.id',
-                'products.sku',
-                'products.name',
-                'products.price',
-                'products.min_stock',
-                'suppliers.name as supplier_name',
-
-                // ✅ STOCK (warehouse-aware)
-                DB::raw("
-                    COALESCE(SUM(
-                        CASE
-                            WHEN stock_movements.type = 'in' THEN stock_movements.quantity
-                            WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
-                            ELSE 0
-                        END
-                    ),0) as stock
-                ")
-            )
-
-            ->groupBy(
-                'products.id',
-                'products.sku',
-                'products.name',
-                'products.price',
-                'products.min_stock',
-                'suppliers.name'
-            );
-
-        if (request('search')) {
-
-            $search = trim(strtolower(request('search')));
-
-            $terms = array_filter(explode(' ', $search));
-
-            $query->where(function ($q) use ($terms) {
-
-                foreach ($terms as $term) {
-
-                    $q->where(function ($sub) use ($term) {
-                        $sub->whereRaw('LOWER(products.name) LIKE ?', ['%' . $term . '%'])
-                            ->orWhereRaw('LOWER(products.sku) LIKE ?', ['%' . $term . '%']);
-                    });
-
-                }
-
-            });
-
-        }
-
-        /*
-        SUPPLIER FILTER
-        */
-        if (request('supplier')) {
-            $query->where('products.supplier_id', request('supplier'));
-        }
-
-        /*
-        PRICE FILTER
-        */
-        if (request('min_price')) {
-            $query->where('products.price', '>=', request('min_price'));
-        }
-
-        if (request('max_price')) {
-            $query->where('products.price', '<=', request('max_price'));
-        }
-
-        /*
-        STATUS FILTER
-        */
-        if (request('status') === 'low') {
-            $query->havingRaw("
-                COALESCE(SUM(
-                    CASE
-                        WHEN stock_movements.type = 'in' THEN stock_movements.quantity
-                        WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
-                        ELSE 0
-                    END
-                ),0) < products.min_stock
-            ");
-        }
-
-        if (request('status') === 'out') {
-            $query->havingRaw("
-                COALESCE(SUM(
-                    CASE
-                        WHEN stock_movements.type = 'in' THEN stock_movements.quantity
-                        WHEN stock_movements.type = 'out' THEN -stock_movements.quantity
-                        ELSE 0
-                    END
-                ),0) <= 0
-            ");
-        }
-
-        $products = $query
-            ->paginate(20)
-            ->withQueryString();
-
-        $suppliers = DB::table('suppliers')->get();
+        $suppliers = \DB::table('suppliers')->get();
         $warehouses = Warehouse::orderBy('name')->get();
 
         return view('products.index', compact('products', 'suppliers', 'warehouses'));

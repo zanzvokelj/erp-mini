@@ -155,7 +155,12 @@
             </table>
 
         </div>
+        </table>
+    </div>
 
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+        {{ $inventory->links() }}
+    </div>
     </div>
 
 </x-app-layout>
