@@ -62,4 +62,13 @@ class User extends Authenticatable
     {
         return $this->role === 'warehouse';
     }
+
+    public function hasAllowedAdminAccess(): bool
+    {
+        return in_array(
+            strtolower($this->email),
+            config('access.allowed_admin_emails', []),
+            true
+        );
+    }
 }

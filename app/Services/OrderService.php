@@ -152,6 +152,10 @@ class OrderService
             ]);
 
             $this->logActivity($order, 'confirmed', 'Order confirmed');
+
+            \Log::info("Dispatching OrderConfirmed event {$order->id}");
+
+            event(new OrderConfirmed($order));
         });
     }
     public function calculateTotals(Order $order): void

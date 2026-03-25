@@ -14,5 +14,6 @@ class OrderConfirmed
     public function __construct(Order $order)
     {
         $this->order = $order;
+        \Log::info("OrderConfirmed event constructed {$order->id}");
     }
 }
