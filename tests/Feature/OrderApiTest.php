@@ -13,17 +13,19 @@ class OrderApiTest extends TestCase
 
     public function test_order_api_can_create_order()
     {
-        $customer = Customer::factory()->create();
-        $warehouse = Warehouse::factory()->create(); // ✅ DODAJ
+        $this->actingAsAdmin(); // ✅
 
-        $response = $this->postJson('/api/v1/orders',[
+        $customer = Customer::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+
+        $response = $this->postJson('/api/v1/orders', [
             'customer_id' => $customer->id,
-            'warehouse_id' => $warehouse->id // ✅ DODAJ
+            'warehouse_id' => $warehouse->id
         ]);
 
         $response->assertStatus(201);
 
-        $this->assertDatabaseHas('orders',[
+        $this->assertDatabaseHas('orders', [
             'customer_id' => $customer->id,
             'warehouse_id' => $warehouse->id
         ]);

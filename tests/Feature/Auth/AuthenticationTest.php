@@ -45,3 +45,18 @@ test('users can logout', function () {
     $this->assertGuest();
     $response->assertRedirect('/');
 });
+
+test('non allowlisted users can not authenticate using the login screen', function () {
+    $user = User::factory()->create([
+        'email' => 'user@example.com',
+    ]);
+
+    $response = $this->from('/login')->post('/login', [
+        'email' => 'user@example.com',
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+    $response->assertRedirect('/login');
+    $response->assertSessionHasErrors('email');
+});

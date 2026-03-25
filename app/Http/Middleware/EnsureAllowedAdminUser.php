@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class EnsureAllowedAdminUser
 {
@@ -12,22 +11,22 @@ class EnsureAllowedAdminUser
     {
         $user = $request->user();
 
-        if (! $user || $user->hasAllowedAdminAccess()) {
-            return $next($request);
+
+        if (! $user || ! $user->hasAllowedAdminAccess()) {
+
+            // API request
+            if ($request->expectsJson()) {
+                abort(403, 'Forbidden.');
+            }
+
+            // WEB request
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'This account is not allowed to access the application.',
+                ]);
         }
 
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        if ($request->expectsJson()) {
-            abort(403, 'Unauthorized.');
-        }
-
-        return redirect()
-            ->route('login')
-            ->withErrors([
-                'email' => 'This account is not allowed to access the application.',
-            ]);
+        return $next($request);
     }
 }

@@ -11,6 +11,8 @@ class OrderApiValidationTest extends TestCase
 
     public function test_order_api_requires_customer()
     {
+        $this->actingAsAdmin(); // ✅
+
         $response = $this->postJson('/api/v1/orders', [
             'warehouse_id' => 1
         ]);
@@ -20,6 +22,8 @@ class OrderApiValidationTest extends TestCase
 
     public function test_order_api_requires_warehouse()
     {
+        $this->actingAsAdmin(); // ✅
+
         $response = $this->postJson('/api/v1/orders', [
             'customer_id' => 1
         ]);
