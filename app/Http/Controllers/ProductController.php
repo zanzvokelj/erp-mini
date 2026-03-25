@@ -97,17 +97,27 @@ class ProductController extends Controller
 
         $products = Product::query()
             ->when($query, function ($q) use ($query) {
-                $q->where(function ($sub) use ($query) {
-                    $sub->where('name', 'like', "%{$query}%")
-                        ->orWhere('sku', 'like', "%{$query}%");
+                $normalizedQuery = mb_strtolower(trim($query));
+
+                $q->where(function ($sub) use ($normalizedQuery) {
+                    $sub->whereRaw('LOWER(name) LIKE ?', ["%{$normalizedQuery}%"])
+                        ->orWhereRaw('LOWER(sku) LIKE ?', ["%{$normalizedQuery}%"]);
                 });
             })
             ->limit(20)
             ->get();
 
         $productService = app(\App\Services\ProductService::class);
+        $warehouses = Warehouse::orderByRaw("
+                CASE
+                    WHEN LOWER(name) = 'main' THEN 0
+                    ELSE 1
+                END
+            ")
+            ->orderBy('name')
+            ->get();
 
-        $products = $products->map(function ($product) use ($warehouseId, $productService) {
+        $products = $products->map(function ($product) use ($warehouseId, $productService, $warehouses) {
 
             $stock = $warehouseId
                 ? $productService->calculateStockInWarehouse($product, $warehouseId)
@@ -123,6 +133,37 @@ class ProductController extends Controller
 
             $available = $stock - $reserved;
 
+            $sourceWarehouse = null;
+
+            if (! $warehouseId) {
+                $sourceWarehouse = $warehouses
+                    ->map(function ($warehouse) use ($product, $productService) {
+                        $warehouseStock = $productService->calculateStockInWarehouse(
+                            $product,
+                            $warehouse->id
+                        );
+
+                        $warehouseReserved = \App\Models\StockReservation::where('product_id', $product->id)
+                            ->where('warehouse_id', $warehouse->id)
+                            ->where(function ($q) {
+                                $q->whereNull('expires_at')
+                                    ->orWhere('expires_at', '>', now());
+                            })
+                            ->sum('quantity');
+
+                        $warehouseAvailable = $warehouseStock - $warehouseReserved;
+
+                        return [
+                            'id' => $warehouse->id,
+                            'name' => $warehouse->name,
+                            'stock' => $warehouseStock,
+                            'reserved' => $warehouseReserved,
+                            'available' => $warehouseAvailable,
+                        ];
+                    })
+                    ->firstWhere('available', '>', 0);
+            }
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -130,7 +171,12 @@ class ProductController extends Controller
                 'price' => $product->price,
                 'stock' => $stock,
                 'reserved' => $reserved,
-                'available' => $available
+                'available' => $available,
+                'source_warehouse_id' => $sourceWarehouse['id'] ?? null,
+                'source_warehouse_name' => $sourceWarehouse['name'] ?? null,
+                'source_stock' => $sourceWarehouse['stock'] ?? null,
+                'source_reserved' => $sourceWarehouse['reserved'] ?? null,
+                'source_available' => $sourceWarehouse['available'] ?? null,
             ];
         });
 

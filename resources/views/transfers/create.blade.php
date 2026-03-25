@@ -34,6 +34,7 @@
 
                     <select name="from_warehouse" id="from-warehouse"
                             class="w-full border rounded px-3 py-2 text-sm">
+                        <option value="">Select source warehouse</option>
                         @foreach($warehouses as $w)
                             <option value="{{ $w->id }}">{{ $w->name }}</option>
                         @endforeach
@@ -44,8 +45,9 @@
                 <div>
                     <label class="text-sm text-gray-600">To Warehouse</label>
 
-                    <select name="to_warehouse"
+                    <select name="to_warehouse" id="to-warehouse"
                             class="w-full border rounded px-3 py-2 text-sm">
+                        <option value="">Select destination warehouse</option>
                         @foreach($warehouses as $w)
                             <option value="{{ $w->id }}">{{ $w->name }}</option>
                         @endforeach
@@ -88,6 +90,7 @@
             const stockInfo = document.getElementById("stock-info");
             const stockWarning = document.getElementById("stock-warning");
             const warehouseSelect = document.getElementById("from-warehouse");
+            const toWarehouseSelect = document.getElementById("to-warehouse");
 
             function validateQty(){
                 if(qtyInput.value > currentAvailable){
@@ -99,8 +102,21 @@
 
             qtyInput.addEventListener("input", validateQty);
             warehouseSelect.addEventListener("change", () => {
-                select.clear();
-                stockInfo.innerText = '';
+                const option = select.options[select.getValue()];
+
+                if (!option) {
+                    currentAvailable = 0;
+                    stockInfo.innerText = '';
+                    validateQty();
+                    return;
+                }
+
+                currentAvailable = option.available || 0;
+
+                stockInfo.innerText =
+                    `Stock: ${option.stock} | Reserved: ${option.reserved} | Available: ${option.available}`;
+
+                validateQty();
             });
 
             const select = new TomSelect("#product-select",{
@@ -108,21 +124,27 @@
                 valueField: "id",
                 labelField: "name",
                 searchField: ["name","sku"],
+                placeholder: "Search by SKU or product name",
 
                 load: function(query, callback) {
 
                     const warehouse = warehouseSelect.value;
 
-                    fetch(`/api/products/search?q=${query}&warehouse_id=${warehouse}`)
+                    apiFetch(`/api/products/search?q=${encodeURIComponent(query)}&warehouse_id=${warehouse}`)
                         .then(res => res.json())
                         .then(data => {
 
                             const results = data.map(p => ({
                                 id: p.id,
-                                name: `${p.name} (${p.sku}) — Available: ${p.available}`,
-                                stock: p.stock,
-                                reserved: p.reserved,
-                                available: p.available
+                                name: warehouse
+                                    ? `${p.name} (${p.sku}) — Available: ${p.available}`
+                                    : `${p.name} (${p.sku}) — ${p.source_warehouse_name ?? 'No warehouse'}${p.source_available !== null ? ` — Available: ${p.source_available}` : ''}`,
+                                sku: p.sku,
+                                stock: warehouse ? p.stock : p.source_stock,
+                                reserved: warehouse ? p.reserved : p.source_reserved,
+                                available: warehouse ? p.available : p.source_available,
+                                sourceWarehouseId: p.source_warehouse_id,
+                                sourceWarehouseName: p.source_warehouse_name
                             }));
 
                             callback(results);
@@ -133,6 +155,25 @@
                 onChange: function(value){
 
                     const option = this.options[value];
+
+                    if (!option) {
+                        currentAvailable = 0;
+                        stockInfo.innerText = '';
+                        validateQty();
+                        return;
+                    }
+
+                    if (!warehouseSelect.value && option.sourceWarehouseId) {
+                        warehouseSelect.value = option.sourceWarehouseId;
+                    }
+
+                    if (
+                        warehouseSelect.value &&
+                        toWarehouseSelect.value &&
+                        warehouseSelect.value === toWarehouseSelect.value
+                    ) {
+                        toWarehouseSelect.value = '';
+                    }
 
                     currentAvailable = option.available || 0;
 
