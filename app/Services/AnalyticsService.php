@@ -171,6 +171,20 @@ class AnalyticsService
             ->value('value') ?? 0;
     }
 
+    public function paidForInventory()
+    {
+        return DB::table('purchase_order_items')
+            ->join(
+                'purchase_orders',
+                'purchase_orders.id',
+                '=',
+                'purchase_order_items.purchase_order_id'
+            )
+            ->where('purchase_orders.status', 'received')
+            ->selectRaw('SUM(purchase_order_items.quantity * purchase_order_items.cost_price) as total')
+            ->value('total') ?? 0;
+    }
+
 
     public function ordersToday()
     {

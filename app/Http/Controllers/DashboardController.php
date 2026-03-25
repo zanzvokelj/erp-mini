@@ -37,6 +37,8 @@ class DashboardController extends Controller
 
             'inventoryValue' => $this->analytics->inventoryValue(),
 
+            'paidForInventory' => $this->analytics->paidForInventory(),
+
             'ordersToday' => $this->analytics->ordersToday(),
 
             'revenueToday' => $this->analytics->revenueToday(),
