@@ -169,7 +169,7 @@
 
         async function loadInvoice() {
 
-            const res = await fetch(`/api/v1/invoices/${invoiceId}`);
+            const res = await apiFetch(`/api/v1/invoices/${invoiceId}`);
             invoice = await res.json();
 
             renderInvoice();
@@ -252,11 +252,10 @@
                 return;
             }
 
-            const res = await fetch(`/api/v1/invoices/${invoiceId}/payments`,{
+            const res = await apiFetch(`/api/v1/invoices/${invoiceId}/payments`,{
                 method:"POST",
                 headers:{
-                    "Content-Type":"application/json",
-                    "Accept":"application/json"
+                    "Content-Type":"application/json"
                 },
                 body:JSON.stringify({
                     amount:amount,

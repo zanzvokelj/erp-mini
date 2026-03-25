@@ -73,7 +73,7 @@
                 params.append('search', query);
             }
 
-            const res = await fetch(`/api/v1/orders/invoicable?${params}`);
+            const res = await apiFetch(`/api/v1/orders/invoicable?${params}`);
             const orders = await res.json(); // backend že vrne clean data
 
             if(!orders.length){
@@ -114,11 +114,8 @@
 
             try {
 
-                const res = await fetch(`/api/v1/orders/${selectedOrderId}/invoice`,{
+                const res = await apiFetch(`/api/v1/orders/${selectedOrderId}/invoice`,{
                     method:"POST",
-                    headers:{
-                        "Accept":"application/json"
-                    }
                 });
 
                 const data = await res.json();

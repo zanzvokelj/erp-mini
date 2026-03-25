@@ -112,7 +112,7 @@
                 status: status
             });
 
-            const res = await fetch(`/api/v1/invoices?${params}`);
+            const res = await apiFetch(`/api/v1/invoices?${params}`);
             const data = await res.json();
 
             invoices = data.data;
@@ -229,11 +229,10 @@
                 return;
             }
 
-            const res = await fetch(`/api/v1/invoices/${currentInvoiceId}/payments`,{
+            const res = await apiFetch(`/api/v1/invoices/${currentInvoiceId}/payments`,{
                 method:"POST",
                 headers:{
-                    "Content-Type":"application/json",
-                    "Accept":"application/json"
+                    "Content-Type":"application/json"
                 },
                 body: JSON.stringify({
                     amount: amount,
