@@ -301,6 +301,19 @@ class OrderService
         });
     }
 
+    public function completeOrder(Order $order): void
+    {
+        if ($order->status !== 'shipped') {
+            throw new \Exception('Only shipped orders can be completed.');
+        }
+
+        $order->update([
+            'status' => 'completed'
+        ]);
+
+        $this->logActivity($order, 'completed', 'Order completed');
+    }
+
     protected function generateOrderNumber(): string
     {
         $lastOrder = Order::lockForUpdate()

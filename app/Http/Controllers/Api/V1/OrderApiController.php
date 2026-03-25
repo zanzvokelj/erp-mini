@@ -5,14 +5,22 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
-use App\Models\Invoice;
+use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\Warehouse;
+use App\Services\InventoryService;
+use App\Services\InvoiceService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class OrderApiController extends Controller
 {
+    public function __construct(
+        protected OrderService $orderService,
+        protected InventoryService $inventoryService,
+        protected InvoiceService $invoiceService
+    ) {}
+
     public function index()
     {
         return OrderResource::collection(
@@ -37,15 +45,151 @@ class OrderApiController extends Controller
     {
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'warehouse_id' => 'required|exists:warehouses,id', // ✅ DODAJ
+            'warehouse_id' => 'required|exists:warehouses,id',
         ]);
 
         $order = $orderService->createDraftOrder(
             $request->customer_id,
-            $request->warehouse_id // ✅ UPORABI REQUEST
+            $request->warehouse_id
         );
 
         return response()->json($order, 201);
+    }
+
+    public function addItem(Request $request, Order $order)
+    {
+        if ($order->status !== 'draft') {
+            return response()->json([
+                'error' => 'Items can only be added to draft orders.',
+            ], 422);
+        }
+
+        $request->validate([
+            'product_id' => ['required', 'exists:products,id'],
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $product = Product::findOrFail($request->product_id);
+
+        $available = $this->inventoryService
+            ->availableStock($product, $order->warehouse_id);
+
+        if ($request->quantity > $available) {
+            return response()->json([
+                'error' => "Only {$available} items available in stock.",
+            ], 422);
+        }
+
+        $item = $this->orderService->addItem(
+            $order,
+            $product,
+            (int) $request->quantity
+        );
+
+        $this->orderService->calculateTotals($order);
+
+        $item->load('product');
+        $order->load('customer', 'items.product');
+
+        return response()->json([
+            'message' => 'Item added',
+            'item' => $item,
+            'order' => new OrderResource($order),
+        ]);
+    }
+
+    public function updateItem(Request $request, OrderItem $item)
+    {
+        $order = $item->order;
+
+        if ($order->status !== 'draft') {
+            return response()->json([
+                'error' => 'Only draft orders can be edited.',
+            ], 422);
+        }
+
+        $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $item->update([
+            'quantity' => (int) $request->quantity,
+        ]);
+
+        $this->inventoryService->updateReservation(
+            $order->id,
+            $item->product_id,
+            (int) $request->quantity
+        );
+
+        $this->orderService->calculateTotals($order);
+
+        $this->orderService->logActivity(
+            $order,
+            'item_updated',
+            "{$item->product->name} quantity updated to {$request->quantity}"
+        );
+
+        $item->load('product');
+        $order->load('customer', 'items.product');
+
+        return response()->json([
+            'message' => 'Item updated',
+            'item' => $item,
+            'order' => new OrderResource($order),
+        ]);
+    }
+
+    public function removeItem(OrderItem $item)
+    {
+        $order = $item->order;
+
+        if ($order->status !== 'draft') {
+            return response()->json([
+                'error' => 'Only draft orders can be edited.',
+            ], 422);
+        }
+
+        $productName = $item->product->name;
+
+        \App\Models\StockReservation::where('order_id', $order->id)
+            ->where('product_id', $item->product_id)
+            ->delete();
+
+        $item->delete();
+
+        $this->orderService->calculateTotals($order);
+
+        $this->orderService->logActivity(
+            $order,
+            'item_removed',
+            "{$productName} removed from order"
+        );
+
+        $order->load('customer', 'items.product');
+
+        return response()->json([
+            'message' => 'Item removed',
+            'order' => new OrderResource($order),
+        ]);
+    }
+
+    public function confirm(Order $order)
+    {
+        try {
+            $this->orderService->confirmOrder($order);
+
+            $order->load('customer', 'items.product');
+
+            return response()->json([
+                'message' => 'Order confirmed',
+                'order' => new OrderResource($order),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     public function invoicable(Request $request)
@@ -76,21 +220,57 @@ class OrderApiController extends Controller
 
     public function ship(Order $order)
     {
-        if ($order->status !== 'confirmed') {
+        try {
+            $this->orderService->shipOrder($order);
+
+            $order->load('customer', 'items.product');
+
             return response()->json([
-                'error' => 'Only confirmed orders can be shipped'
+                'message' => 'Order shipped successfully',
+                'order' => new OrderResource($order),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
             ], 422);
         }
-
-        $order->update([
-            'status' => 'shipped'
-        ]);
-
-        return response()->json([
-            'message' => 'Order shipped successfully'
-        ]);
     }
 
+    public function complete(Order $order)
+    {
+        try {
+            $this->orderService->completeOrder($order);
+
+            $order->load('customer', 'items.product');
+
+            return response()->json([
+                'message' => 'Order completed',
+                'order' => new OrderResource($order),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function cancel(Order $order)
+    {
+        try {
+            $this->orderService->cancelOrder($order);
+
+            $order->load('customer', 'items.product');
+
+            return response()->json([
+                'message' => 'Order cancelled',
+                'order' => new OrderResource($order),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
 
     public function createInvoice(Order $order)
     {
@@ -106,33 +286,11 @@ class OrderApiController extends Controller
             ], 400);
         }
 
-        $order->load('items.product');
-
-        $invoice = Invoice::create([
-            'invoice_number' => 'INV-' . Str::random(12),
-            'order_id' => $order->id,
-            'customer_id' => $order->customer_id,
-            'status' => 'draft',
-            'subtotal' => $order->subtotal,
-            'tax' => 0,
-            'total' => $order->total,
-            'issued_at' => now()
-        ]);
-
-        foreach ($order->items as $item) {
-            $invoice->items()->create([
-                'product_id' => $item->product_id,
-                'quantity' => $item->quantity,
-                'price' => $item->price_at_time,
-                'subtotal' => $item->price_at_time * $item->quantity
-            ]);
-        }
+        $invoice = $this->invoiceService->generateFromOrder($order);
 
         return response()->json([
             'message' => 'Invoice created',
             'invoice_id' => $invoice->id
         ]);
     }
-
-
 }
