@@ -9,10 +9,12 @@ test('login screen can be rendered', function () {
 });
 
 test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'email' => 'admin@admin.com',
+    ]);
 
     $response = $this->post('/login', [
-        'email' => $user->email,
+        'email' => 'admin@admin.com',
         'password' => 'password',
     ]);
 
@@ -21,10 +23,12 @@ test('users can authenticate using the login screen', function () {
 });
 
 test('users can not authenticate with invalid password', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'email' => 'admin@admin.com',
+    ]);
 
     $this->post('/login', [
-        'email' => $user->email,
+        'email' => 'admin@admin.com',
         'password' => 'wrong-password',
     ]);
 
@@ -32,10 +36,27 @@ test('users can not authenticate with invalid password', function () {
 });
 
 test('users can logout', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'email' => 'admin@admin.com',
+    ]);
 
     $response = $this->actingAs($user)->post('/logout');
 
     $this->assertGuest();
     $response->assertRedirect('/');
+});
+
+test('non allowlisted users can not authenticate using the login screen', function () {
+    $user = User::factory()->create([
+        'email' => 'user@example.com',
+    ]);
+
+    $response = $this->from('/login')->post('/login', [
+        'email' => 'user@example.com',
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+    $response->assertRedirect('/login');
+    $response->assertSessionHasErrors('email');
 });

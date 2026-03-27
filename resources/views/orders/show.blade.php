@@ -175,7 +175,8 @@
                     <form
                         method="POST"
                         action="{{ route('orders.items.add', $order) }}"
-                        class="flex items-start gap-4"
+                        id="add-item-form"
+                        class="flex flex-wrap items-start gap-2"
                     >
 
                         @csrf
@@ -187,32 +188,36 @@
                             class="w-72 border border-gray-200 rounded-md px-3 py-2 text-sm"
                         ></select>
 
+                        <div class="flex flex-col gap-1">
 
-                        <div class="flex flex-col">
+                            <div class="flex items-center gap-2">
 
-                            <input
-                                type="number"
-                                name="quantity"
-                                id="qty-input"
-                                value="1"
-                                min="1"
-                                class="w-20 border border-gray-200 rounded px-3 py-2 text-sm"
-                            />
+                                <input
+                                    type="number"
+                                    name="quantity"
+                                    id="qty-input"
+                                    value="1"
+                                    min="1"
+                                    class="w-20 border border-gray-200 rounded px-3 py-2 text-sm"
+                                />
 
-                            <div class="text-xs text-gray-500 mt-1" id="stock-info"></div>
+                                <button
+                                    type="submit"
+                                    id="add-item-button"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Add Item
+                                </button>
+
+                            </div>
+
+                            <div class="text-xs text-gray-500" id="stock-info"></div>
 
                             <div class="text-xs text-red-600 hidden" id="stock-warning">
                                 Not enough available stock
                             </div>
 
                         </div>
-
-
-                        <button
-                            class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-                        >
-                            Add Item
-                        </button>
 
                     </form>
 
@@ -354,8 +359,39 @@
             const qtyInput = document.getElementById("qty-input");
             const stockInfo = document.getElementById("stock-info");
             const stockWarning = document.getElementById("stock-warning");
-
+            const addItemButton = document.getElementById("add-item-button");
             const productSelect = document.querySelector("#product-select");
+
+            function updateSubmitState(hasProduct = Boolean(productSelect?.value)) {
+                if (!addItemButton || !qtyInput) {
+                    return;
+                }
+
+                const qty = parseInt(qtyInput.value || '0', 10);
+                const isValidQty = qty > 0 && qty <= currentAvailable;
+                const canSubmit = hasProduct && isValidQty;
+
+                addItemButton.disabled = !canSubmit;
+                addItemButton.classList.toggle('opacity-50', !canSubmit);
+                addItemButton.classList.toggle('cursor-not-allowed', !canSubmit);
+            }
+
+            function validateQty() {
+                if (!qtyInput || !stockWarning) {
+                    return;
+                }
+
+                if (parseInt(qtyInput.value || '0', 10) > currentAvailable) {
+                    stockWarning.classList.remove("hidden");
+                } else {
+                    stockWarning.classList.add("hidden");
+                }
+
+                updateSubmitState();
+            }
+
+            qtyInput?.addEventListener("input", validateQty);
+            updateSubmitState(false);
 
             if(productSelect){
 
@@ -393,12 +429,21 @@
 
                         const option = this.options[value];
 
+                        if (!option) {
+                            currentAvailable = 0;
+                            stockInfo.innerText = '';
+                            validateQty();
+                            updateSubmitState(false);
+                            return;
+                        }
+
                         currentAvailable = option.available || 0;
 
                         stockInfo.innerText =
                             `Stock: ${option.stock} | Reserved: ${option.reserved} | Available: ${option.available}`;
 
                         validateQty();
+                        updateSubmitState(true);
                     }
 
                 });

@@ -18,13 +18,16 @@ class OrderService
 {
     protected ProductService $productService;
     protected InventoryService $inventoryService;
+    protected AccountingService $accountingService;
 
     public function __construct(
         ProductService $productService,
-        InventoryService $inventoryService
+        InventoryService $inventoryService,
+        AccountingService $accountingService
     ) {
         $this->productService = $productService;
         $this->inventoryService = $inventoryService;
+        $this->accountingService = $accountingService;
     }
 
     public function createDraftOrder(int $customerId, int $warehouseId): Order
@@ -152,6 +155,10 @@ class OrderService
             ]);
 
             $this->logActivity($order, 'confirmed', 'Order confirmed');
+
+            \Log::info("Dispatching OrderConfirmed event {$order->id}");
+
+            event(new OrderConfirmed($order));
         });
     }
     public function calculateTotals(Order $order): void
@@ -255,6 +262,8 @@ class OrderService
             event(new OrderShipped($order));
 
         });
+
+        $this->accountingService->recordCostOfGoodsSold($order->fresh('items'));
     }
 
     public function returnOrder(Order $order): void
@@ -295,6 +304,19 @@ class OrderService
             );
 
         });
+    }
+
+    public function completeOrder(Order $order): void
+    {
+        if ($order->status !== 'shipped') {
+            throw new \Exception('Only shipped orders can be completed.');
+        }
+
+        $order->update([
+            'status' => 'completed'
+        ]);
+
+        $this->logActivity($order, 'completed', 'Order completed');
     }
 
     protected function generateOrderNumber(): string

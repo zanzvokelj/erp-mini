@@ -28,6 +28,22 @@
 
             </div>
 
+            <div>
+                <label class="text-sm text-gray-500 mb-1 block">
+                    Tax Rate %
+                </label>
+
+                <input
+                    id="taxRateInput"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value="0"
+                    class="w-full border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+            </div>
+
             <button
                 onclick="createInvoice()"
                 class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
@@ -73,7 +89,7 @@
                 params.append('search', query);
             }
 
-            const res = await fetch(`/api/v1/orders/invoicable?${params}`);
+            const res = await apiFetch(`/api/v1/orders/invoicable?${params}`);
             const orders = await res.json(); // backend že vrne clean data
 
             if(!orders.length){
@@ -113,12 +129,13 @@
             }
 
             try {
+                const taxRate = parseFloat(document.getElementById('taxRateInput').value || '0');
 
-                const res = await fetch(`/api/v1/orders/${selectedOrderId}/invoice`,{
+                const res = await apiFetch(`/api/v1/orders/${selectedOrderId}/invoice`,{
                     method:"POST",
-                    headers:{
-                        "Accept":"application/json"
-                    }
+                    body: JSON.stringify({
+                        tax_rate: taxRate,
+                    }),
                 });
 
                 const data = await res.json();

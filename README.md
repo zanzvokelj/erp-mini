@@ -6,6 +6,7 @@ This project demonstrates how a real-world backend system can be designed beyond
 
 - transactional safety
 - inventory traceability
+- accounting control
 - domain-driven architecture
 - SQL-driven analytics
 - scalable system design
@@ -19,6 +20,7 @@ This project demonstrates how a real-world backend system can be designed beyond
 - Reservation-based inventory system (prevents overselling)
 - Multi-warehouse support
 - Ledger-based inventory tracking (audit-ready)
+- Double-entry accounting with finance reporting
 - Concurrency-safe architecture
 - Performance tested (1000 orders scenario)
 - Full automated test coverage
@@ -214,6 +216,13 @@ Receiving creates stock movements:
 IN → purchase_order
 ```
 
+Receiving also creates accounting side effects:
+
+```
+Inventory Asset / Accounts Payable
+Input VAT Receivable / Accounts Payable
+```
+
 ---
 
 ### 📈 Inventory Forecasting
@@ -369,6 +378,123 @@ Use cases:
 - record payments per invoice
 - track payment status
 - link payments to orders
+
+---
+
+## 🧾 Accounting Module
+
+The project includes a structured accounting layer on top of operational order, invoice, payment, and purchasing flows.
+
+### Core Accounting Structure
+
+```
+accounts
+journal_entries
+journal_lines
+```
+
+This accounting layer uses a double-entry model:
+
+```
+every debit must have an equal credit
+```
+
+This provides:
+
+- general ledger
+- accounting audit trail
+- side-effect posting from business events
+- reporting derived from posted journal entries
+
+### Posted Business Events
+
+The following business events automatically create journal entries:
+
+- Invoice issued
+  - Accounts Receivable / Sales Revenue
+  - Output VAT Payable when tax is present
+- Customer payment received
+  - Cash / Accounts Receivable
+- Purchase order receipt
+  - Inventory Asset / Accounts Payable
+  - Input VAT Receivable / Accounts Payable when tax is present
+- Supplier payment
+  - Accounts Payable / Cash
+- Cost of goods sold on shipping
+  - Cost of Goods Sold / Inventory Asset
+
+### Finance Reports
+
+The finance module includes:
+
+- Journal Entries
+- Trial Balance
+- Profit & Loss
+- Balance Sheet
+- VAT Summary
+
+These reports are available both in the Finance UI and through protected API endpoints.
+
+### Chart of Accounts Management
+
+Accounts support:
+
+- code
+- name
+- type
+- category
+- subtype
+- active / inactive state
+
+The project includes:
+
+- account list
+- create account
+- edit account
+- activate / deactivate account
+
+### VAT Accounting
+
+The system includes a basic VAT model:
+
+- Output VAT Payable
+- Input VAT Receivable
+- VAT posting on invoices and purchase receipts
+- VAT summary report
+- net VAT payable / receivable position
+
+### Period Controls
+
+Accounting periods can be managed by month.
+
+Supported controls:
+
+- open periods
+- closed periods
+- posting lock for closed periods
+
+This prevents new journal postings inside locked accounting periods.
+
+### Reversals
+
+Journal entries can be reversed with a reversal entry instead of being deleted or overwritten.
+
+This provides:
+
+- non-destructive corrections
+- cleaner accounting audit trail
+- safer financial corrections
+
+### Posting Layer
+
+Accounting posting is centralized through a dedicated ledger service with formal entry types and posting maps.
+
+This improves:
+
+- consistency
+- reuse
+- safer extensions
+- reporting reliability
 
 ---
 

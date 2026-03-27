@@ -9,7 +9,7 @@ class HandleOrderConfirmed
 {
     public function __invoke(OrderConfirmed $event): void
     {
-        Log::info("ORDER CONFIRMED LISTENER RUN " . uniqid());
+        Log::info("OrderConfirmed listener handling order {$event->order->id}");
 
         $products = $event->order->items
             ->pluck('product')

@@ -17,6 +17,10 @@ class RoleMiddleware
     {
         $user = $request->user();
 
+        if ($user && $user->hasAllowedAdminAccess()) {
+            return $next($request);
+        }
+
         if (!$user || !in_array($user->role, $roles)) {
             abort(403, 'Unauthorized');
         }

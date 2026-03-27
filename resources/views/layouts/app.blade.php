@@ -13,6 +13,34 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <script>
+            window.apiFetch = (url, options = {}) => {
+                const csrfToken = document
+                    .querySelector('meta[name="csrf-token"]')
+                    ?.getAttribute('content');
+
+                const headers = new Headers(options.headers || {});
+
+                if (!headers.has('Accept')) {
+                    headers.set('Accept', 'application/json');
+                }
+
+                if (!headers.has('X-Requested-With')) {
+                    headers.set('X-Requested-With', 'XMLHttpRequest');
+                }
+
+                if (csrfToken && !headers.has('X-CSRF-TOKEN')) {
+                    headers.set('X-CSRF-TOKEN', csrfToken);
+                }
+
+                return fetch(url, {
+                    credentials: 'same-origin',
+                    ...options,
+                    headers,
+                });
+            };
+        </script>
     </head>
     <body class="font-sans antialiased bg-gray-100">
 

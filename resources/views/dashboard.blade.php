@@ -50,6 +50,13 @@
             </div>
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <p class="text-xs text-gray-500">Paid For Inventory</p>
+                <p class="text-xl font-semibold text-gray-900">
+                    €{{ number_format($paidForInventory, 2) }}
+                </p>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
                 <p class="text-xs text-gray-500">Orders Today</p>
                 <p class="text-xl font-semibold text-gray-900">
                     {{ $ordersToday }}
@@ -360,4 +367,3 @@
 
 
 </x-app-layout>
-

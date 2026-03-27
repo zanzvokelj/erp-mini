@@ -16,9 +16,9 @@ class OrderFactory extends Factory
 
             'order_number' => 'ORD-' . fake()->unique()->numberBetween(10000,99999),
 
-            // ✅ FIX
             'customer_id' => Customer::factory(),
-            'warehouse_id' => Warehouse::factory(),
+            'warehouse_id' => Warehouse::query()->inRandomOrder()->value('id')
+                ?? Warehouse::factory(),
 
             'status' => fake()->randomElement([
                 'draft','confirmed','shipped','completed'

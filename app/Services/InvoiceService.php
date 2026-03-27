@@ -9,20 +9,28 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceService
 {
-    public function generateFromOrder(Order $order): Invoice
+    public function __construct(
+        protected AccountingService $accountingService
+    ) {}
+
+    public function generateFromOrder(Order $order, float $taxRate = 0): Invoice
     {
-        return DB::transaction(function () use ($order) {
+        $invoice = DB::transaction(function () use ($order, $taxRate) {
 
             $order->load('items.product', 'customer');
+
+            $subtotal = round((float) $order->subtotal, 2);
+            $tax = round($subtotal * ($taxRate / 100), 2);
+            $total = round($subtotal + $tax, 2);
 
             $invoice = Invoice::create([
                 'invoice_number' => 'INV-' . uniqid(),
                 'order_id' => $order->id,
                 'customer_id' => $order->customer_id,
                 'status' => 'draft',
-                'subtotal' => $order->subtotal,
-                'tax' => 0,
-                'total' => $order->total,
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'total' => $total,
                 'issued_at' => now(),
                 'due_date' => now()->addDays(14)
             ]);
@@ -41,5 +49,9 @@ class InvoiceService
 
             return $invoice;
         });
+
+        $this->accountingService->recordInvoiceIssued($invoice);
+
+        return $invoice;
     }
 }

@@ -9,14 +9,14 @@ class WarehouseSeeder extends Seeder
 {
     public function run(): void
     {
-        Warehouse::create([
-            'name' => 'Main Distribution Center',
-            'code' => 'WH-MAIN'
-        ]);
+        Warehouse::updateOrCreate(
+            ['code' => 'WH-MAIN'],
+            ['name' => 'Maribor Warehouse']
+        );
 
-        Warehouse::create([
-            'name' => 'Secondary Storage',
-            'code' => 'WH-SEC'
-        ]);
+        Warehouse::updateOrCreate(
+            ['code' => 'WH-SEC'],
+            ['name' => 'Celje Warehouse']
+        );
     }
 }

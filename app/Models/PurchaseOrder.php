@@ -11,6 +11,9 @@ class PurchaseOrder extends Model
         'supplier_id',
         'warehouse_id',
         'status',
+        'subtotal',
+        'tax',
+        'tax_rate',
         'total',
         'ordered_at',
         'received_at'
@@ -29,5 +32,10 @@ class PurchaseOrder extends Model
     public function warehouse()
     {
         return $this->belongsTo(\App\Models\Warehouse::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(SupplierPayment::class);
     }
 }
