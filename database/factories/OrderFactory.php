@@ -11,6 +11,13 @@ class OrderFactory extends Factory
     public function definition(): array
     {
         $date = fake()->dateTimeBetween('2026-01-01', 'now');
+        $status = fake()->randomElement([
+            'draft',
+            'confirmed',
+            'shipped',
+            'completed',
+            'cancelled',
+        ]);
 
         return [
 
@@ -20,15 +27,15 @@ class OrderFactory extends Factory
             'warehouse_id' => Warehouse::query()->inRandomOrder()->value('id')
                 ?? Warehouse::factory(),
 
-            'status' => fake()->randomElement([
-                'draft','confirmed','shipped','completed'
-            ]),
+            'status' => $status,
 
             'subtotal' => 0,
             'discount_total' => 0,
             'total' => 0,
 
-            'confirmed_at' => $date,
+            'confirmed_at' => in_array($status, ['confirmed', 'shipped', 'completed'])
+                ? $date
+                : null,
 
             'created_at' => $date,
             'updated_at' => $date,

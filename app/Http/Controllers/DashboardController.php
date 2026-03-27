@@ -48,6 +48,8 @@ class DashboardController extends Controller
             'topCustomers' => $this->analytics->topCustomers(),
 
             'totalProfit' => $this->analytics->totalProfit(),
+
+            'monthlyRevenue' => $this->analytics->monthlyRevenue(),
         ]);
     }
 

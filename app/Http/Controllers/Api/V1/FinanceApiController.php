@@ -23,21 +23,35 @@ class FinanceApiController extends Controller
     ) {
     }
 
-    public function overview()
+    public function overview(Request $request)
     {
         // 💰 TOTAL REVENUE
         $revenue = Invoice::where('status', 'paid')
             ->sum('total');
 
+        $openInvoices = Invoice::query()
+            ->withSum('payments', 'amount')
+            ->whereNotIn('status', ['paid', 'cancelled']);
+
         // ⏳ OUTSTANDING
-        $outstanding = Invoice::whereIn('status', ['draft', 'sent'])
-            ->sum('total');
+        $outstanding = (clone $openInvoices)
+            ->get(['id', 'total'])
+            ->sum(function (Invoice $invoice) {
+                $paid = (float) ($invoice->payments_sum_amount ?? 0);
+
+                return max((float) $invoice->total - $paid, 0);
+            });
 
         // 🔴 OVERDUE (SUM)
-        $overdue = Invoice::whereIn('status', ['draft', 'sent'])
+        $overdue = (clone $openInvoices)
             ->whereNotNull('due_date')
             ->where('due_date', '<', now())
-            ->sum('total');
+            ->get(['id', 'total'])
+            ->sum(function (Invoice $invoice) {
+                $paid = (float) ($invoice->payments_sum_amount ?? 0);
+
+                return max((float) $invoice->total - $paid, 0);
+            });
 
         // 📈 THIS MONTH
         $thisMonth = Invoice::where('status', 'paid')
@@ -46,26 +60,44 @@ class FinanceApiController extends Controller
             ->sum('total');
 
         // 🔥 OVERDUE LIST
+        $perPage = min(max($request->integer('per_page', 10), 1), 50);
+
         $overdueInvoices = Invoice::with('customer')
-            ->whereIn('status', ['draft','sent'])
+            ->withSum('payments', 'amount')
+            ->whereNotIn('status', ['paid','cancelled'])
             ->whereNotNull('due_date')
             ->where('due_date', '<', now())
             ->latest()
-            ->limit(10)
-            ->get([
+            ->paginate($perPage, [
                 'id',
                 'invoice_number',
                 'customer_id',
                 'total',
                 'due_date'
-            ]);
+            ])
+            ->through(function (Invoice $invoice) {
+                $paid = (float) ($invoice->payments_sum_amount ?? 0);
+                $invoice->open_amount = round(max((float) $invoice->total - $paid, 0), 2);
+
+                return $invoice;
+            })
+            ->withQueryString();
 
         return response()->json([
             'revenue' => (float) $revenue,
-            'outstanding' => (float) $outstanding,
-            'overdue' => (float) $overdue,
+            'outstanding' => round((float) $outstanding, 2),
+            'overdue' => round((float) $overdue, 2),
             'this_month' => (float) $thisMonth,
-            'overdue_invoices' => $overdueInvoices // 🔥 TO JE NOVO
+            'overdue_invoices' => $overdueInvoices->items(),
+            'overdue_pagination' => [
+                'current_page' => $overdueInvoices->currentPage(),
+                'last_page' => $overdueInvoices->lastPage(),
+                'per_page' => $overdueInvoices->perPage(),
+                'total' => $overdueInvoices->total(),
+                'from' => $overdueInvoices->firstItem(),
+                'to' => $overdueInvoices->lastItem(),
+                'has_more_pages' => $overdueInvoices->hasMorePages(),
+            ],
         ]);
     }
 

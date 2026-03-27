@@ -16,11 +16,22 @@ class SupplierFactory extends Factory
      */
     public function definition(): array
     {
+        $name = fake()->randomElement([
+            'Adria Office Supply',
+            'Balkan Tech Distribution',
+            'Central Workspace Systems',
+            'DataCore Solutions',
+            'Euro Device Hub',
+            'Nordic Business Equipment',
+            'Prime Components Group',
+            'Vertex Procurement',
+        ]);
+
         return [
-            'name' => fake()->company(),
+            'name' => $name . ' ' . fake()->randomElement(['d.o.o.', 'Ltd.', 'Group', 'Distribution']) . ' ' . fake()->numerify('##'),
             'email' => fake()->companyEmail(),
             'phone' => fake()->phoneNumber(),
-            'lead_time_days' => fake()->numberBetween(1, 14)
+            'lead_time_days' => fake()->numberBetween(3, 21)
         ];
     }
 }

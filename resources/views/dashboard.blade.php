@@ -321,20 +321,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        const monthlyRevenue = @json($monthlyRevenue);
 
-        async function loadDashboardChart() {
-
-            const response = await fetch('/dashboard-data');
-            const data = await response.json();
-
-            const revenueData = data.monthly_revenue;
-
-            const labels = revenueData.map(item => {
-                const date = new Date(item.month);
-                return date.toLocaleString('default', { month: 'short' });
-            });
-
-            const values = revenueData.map(item => item.revenue);
+        function loadDashboardChart() {
+            const revenueData = Array.isArray(monthlyRevenue) ? monthlyRevenue : [];
+            const labels = revenueData.map(item => item.label);
+            const values = revenueData.map(item => Number(item.revenue ?? 0));
 
             const ctx = document.getElementById('revenueChart');
 
@@ -345,12 +337,21 @@
                     datasets: [{
                         label: 'Revenue',
                         data: values,
-                        borderWidth: 1
+                        backgroundColor: 'rgba(37, 99, 235, 0.75)',
+                        borderColor: 'rgba(29, 78, 216, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        maxBarThickness: 48,
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                        },
+                    },
                     plugins: {
                         legend: {
                             display: false

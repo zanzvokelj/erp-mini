@@ -20,7 +20,8 @@ class Invoice extends Model
         'tax',
         'total',
         'issued_at',
-        'due_date'
+        'due_date',
+        'paid_at',
     ];
 
     public function order(): BelongsTo
