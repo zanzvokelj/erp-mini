@@ -30,4 +30,9 @@ class PurchaseOrder extends Model
     {
         return $this->belongsTo(\App\Models\Warehouse::class);
     }
+
+    public function payments()
+    {
+        return $this->hasMany(SupplierPayment::class);
+    }
 }

@@ -35,6 +35,36 @@
                     </div>
                 </div>
 
+                <div>
+                    <div class="text-sm text-gray-500 mb-1">
+                        Total
+                    </div>
+
+                    <div class="font-medium">
+                        €{{ number_format((float) $po->total, 2) }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-sm text-gray-500 mb-1">
+                        Paid
+                    </div>
+
+                    <div class="font-medium text-green-700">
+                        €{{ number_format((float) $po->payments->sum('amount'), 2) }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-sm text-gray-500 mb-1">
+                        Outstanding
+                    </div>
+
+                    <div class="font-medium text-red-600">
+                        €{{ number_format((float) $po->total - (float) $po->payments->sum('amount'), 2) }}
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -154,6 +184,74 @@
 
         @endif
 
+
+        @if($po->status === 'received')
+
+            <div class="bg-white border rounded p-6">
+
+                <h2 class="font-semibold mb-4">
+                    Supplier Payments
+                </h2>
+
+                <form
+                    method="POST"
+                    action="{{ route('purchase-orders.payments.store', $po) }}"
+                    class="flex flex-wrap gap-2 mb-4"
+                >
+                    @csrf
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        max="{{ max((float) $po->total - (float) $po->payments->sum('amount'), 0) }}"
+                        name="amount"
+                        placeholder="Amount"
+                        class="border rounded px-3 py-2"
+                    />
+
+                    <select
+                        name="payment_method"
+                        class="border rounded px-3 py-2"
+                    >
+                        <option value="">Payment method</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="card">Card</option>
+                        <option value="cash">Cash</option>
+                        <option value="manual">Manual</option>
+                    </select>
+
+                    <button class="bg-green-600 text-white px-4 py-2 rounded">
+                        Record Payment
+                    </button>
+                </form>
+
+                <table class="w-full text-sm">
+                    <thead class="text-gray-500">
+                    <tr>
+                        <th class="text-left">Date</th>
+                        <th class="text-left">Method</th>
+                        <th class="text-left">Amount</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                    @forelse($po->payments as $payment)
+                        <tr>
+                            <td class="py-2">{{ optional($payment->paid_at)->format('Y-m-d H:i') }}</td>
+                            <td>{{ $payment->payment_method ?? '-' }}</td>
+                            <td>€{{ number_format((float) $payment->amount, 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="py-3 text-gray-500">No supplier payments recorded yet.</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
+
+            </div>
+
+        @endif
 
 
         <!-- ACTIONS -->

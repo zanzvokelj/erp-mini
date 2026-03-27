@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceService
 {
+    public function __construct(
+        protected AccountingService $accountingService
+    ) {}
+
     public function generateFromOrder(Order $order): Invoice
     {
-        return DB::transaction(function () use ($order) {
+        $invoice = DB::transaction(function () use ($order) {
 
             $order->load('items.product', 'customer');
 
@@ -41,5 +45,9 @@ class InvoiceService
 
             return $invoice;
         });
+
+        $this->accountingService->recordInvoiceIssued($invoice);
+
+        return $invoice;
     }
 }

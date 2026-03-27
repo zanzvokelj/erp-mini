@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use App\Services\ProductService;
 use App\Services\OrderService;
+use Database\Seeders\AccountingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class OrderApiTest extends TestCase
@@ -36,6 +37,8 @@ class OrderApiTest extends TestCase
 
     public function test_order_api_ship_uses_domain_service_flow()
     {
+        $this->seed(AccountingSeeder::class);
+
         $this->actingAsAdmin();
 
         $customer = Customer::factory()->create();

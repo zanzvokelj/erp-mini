@@ -12,6 +12,7 @@ use App\Models\Warehouse;
 use App\Services\OrderService;
 use App\Services\ProductService;
 use App\Services\InventoryService;
+use Database\Seeders\AccountingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class OrderTest extends TestCase
@@ -127,6 +128,8 @@ class OrderTest extends TestCase
 
     public function test_shipping_reduces_stock()
     {
+        $this->seed(AccountingSeeder::class);
+
         $user = User::factory()->create();
         $this->actingAs($user);
 

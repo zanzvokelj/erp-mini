@@ -2,7 +2,16 @@
 
     <div class="p-8 space-y-6">
 
-        <h1 class="text-2xl font-semibold">Finance Dashboard</h1>
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-semibold">Finance Dashboard</h1>
+
+            <a
+                href="{{ route('finance.journal-entries.index') }}"
+                class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+            >
+                View Journal
+            </a>
+        </div>
 
         <!-- KPI -->
         <div class="grid grid-cols-4 gap-6">

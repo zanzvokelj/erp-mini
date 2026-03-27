@@ -10,6 +10,7 @@ use App\Models\PurchaseOrderItem;
 use App\Models\Warehouse;
 use App\Services\PurchaseOrderService;
 use App\Services\ProductService;
+use Database\Seeders\AccountingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class PurchaseOrderTest extends TestCase
@@ -18,6 +19,8 @@ class PurchaseOrderTest extends TestCase
 
     public function test_purchase_order_receiving_increases_stock()
     {
+        $this->seed(AccountingSeeder::class);
+
         $warehouse = Warehouse::factory()->create();
         $supplier = Supplier::factory()->create();
         $product = Product::factory()->create();

@@ -78,5 +78,6 @@ Route::prefix('v1')->group(function () {
 
 
         Route::get('/finance/overview', [FinanceApiController::class, 'overview']);
+        Route::get('/finance/journal-entries', [FinanceApiController::class, 'journalEntries']);
     });
 });

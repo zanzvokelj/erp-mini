@@ -8,9 +8,14 @@ use App\Models\Payment;
 use App\Models\Order;
 use App\Models\OrderActivity;
 use Illuminate\Http\Request;
+use App\Services\AccountingService;
 
 class PaymentApiController extends Controller
 {
+    public function __construct(
+        protected AccountingService $accountingService
+    ) {}
+
     public function store(Request $request, Invoice $invoice)
     {
         $request->validate([
@@ -50,6 +55,8 @@ class PaymentApiController extends Controller
 
         // 🔄 UPDATE STATUS
         $this->updateInvoiceStatus($invoice);
+
+        $this->accountingService->recordPaymentReceived($payment);
 
         return response()->json($payment);
     }

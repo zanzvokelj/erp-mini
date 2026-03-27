@@ -11,6 +11,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\OrderItem;
 use App\Http\Controllers\TransferController;
@@ -107,6 +108,10 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
         ->middleware('auth')
         ->name('purchase-orders.receive');
 
+    Route::post('/purchase-orders/{po}/payments', [PurchaseOrderController::class,'recordPayment'])
+        ->middleware('auth')
+        ->name('purchase-orders.payments.store');
+
     Route::get('/purchase-orders', [PurchaseOrderController::class,'index'])
         ->middleware('auth')
         ->name('purchase-orders.index');
@@ -172,6 +177,9 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
     Route::get('/finance', function () {
         return view('finance.index');
     })->name('finance.index');
+
+    Route::get('/finance/journal-entries', [JournalEntryController::class, 'index'])
+        ->name('finance.journal-entries.index');
 
     Route::get('/transfers', [TransferController::class, 'index'])
         ->name('transfers.index');

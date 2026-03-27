@@ -15,10 +15,11 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
 use App\Models\Warehouse;
-
+use Illuminate\Support\Facades\Hash;
 use App\Services\OrderService;
 
 use Illuminate\Support\Str;
+
 
 class DatabaseSeeder extends Seeder
 {
@@ -28,29 +29,39 @@ class DatabaseSeeder extends Seeder
         /**
          * 1️⃣ Admin user
          */
-        User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'admin@admin.com',
-            'role' => 'admin'
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@admin.com'],
+            [
+                'name' => 'Admin',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'email_verified_at' => now(),
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Super Admin',
-            'email' => 'sadmin@sadmin.com',
-            'role' => 'admin'
-        ]);
+
+        User::updateOrCreate(
+            ['email' => 'sadmin@sadmin.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'email_verified_at' => now(),
+            ]
+        );
 
 
         /**
          * 2️⃣ Warehouses
          */
+        $this->call(AccountingSeeder::class);
         $this->call(WarehouseSeeder::class);
 
 
         /**
          * 3️⃣ Core data
          */
-        Supplier::factory(20)->create();
+        Supplier::factory(15)->create();
         Customer::factory(200)->create();
         Product::factory(1000)->create();
 

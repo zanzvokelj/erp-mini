@@ -55,7 +55,7 @@ class PurchaseOrderController extends Controller
 
     public function show(PurchaseOrder $po)
     {
-        $po->load('supplier','items.product');
+        $po->load('supplier','items.product','payments');
 
         $products = \App\Models\Product::orderBy('name')->get();
 
@@ -102,5 +102,25 @@ class PurchaseOrderController extends Controller
         ]);
 
         return back();
+    }
+
+    public function recordPayment(Request $request, PurchaseOrder $po)
+    {
+        $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_method' => ['nullable', 'string'],
+        ]);
+
+        try {
+            $this->service->recordSupplierPayment(
+                $po,
+                (float) $request->amount,
+                $request->payment_method
+            );
+
+            return back()->with('success', 'Supplier payment recorded');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 }

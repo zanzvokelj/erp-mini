@@ -10,7 +10,7 @@ class WarehouseFactory extends Factory
     {
         return [
             'name' => fake()->company . ' Warehouse',
-            'code' => 'WH-' . strtoupper(fake()->bothify('???'))
+            'code' => 'WH-' . strtoupper(fake()->unique()->bothify('??##??'))
         ];
     }
 }

@@ -388,6 +388,41 @@
                             }
                         }
                     }
+                },
+                JournalLine: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'integer', example: 3 },
+                        account_id: { type: 'integer', example: 1 },
+                        debit: { type: 'number', format: 'float', example: 3944.05 },
+                        credit: { type: 'number', format: 'float', example: 0 },
+                        line_number: { type: 'integer', example: 1 },
+                        account: {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'integer', example: 1 },
+                                code: { type: 'string', example: '1000' },
+                                name: { type: 'string', example: 'Cash' },
+                                type: { type: 'string', example: 'asset' }
+                            }
+                        }
+                    }
+                },
+                JournalEntry: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'integer', example: 2 },
+                        entry_number: { type: 'string', example: 'JE-000002' },
+                        entry_type: { type: 'string', example: 'payment_received' },
+                        reference_type: { type: 'string', example: 'App\\Models\\Payment' },
+                        reference_id: { type: 'integer', example: 609 },
+                        description: { type: 'string', example: 'Payment received for invoice INV-69c41bae8ce16' },
+                        posted_at: { type: 'string', format: 'date-time' },
+                        lines: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/JournalLine' }
+                        }
+                    }
                 }
             }
         },
@@ -1030,6 +1065,40 @@
                                                 type: 'array',
                                                 items: { $ref: '#/components/schemas/Invoice' }
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            '/api/v1/finance/journal-entries': {
+                get: {
+                    tags: ['Finance'],
+                    operationId: 'listJournalEntries',
+                    summary: 'List journal entries',
+                    description: 'Returns paginated accounting journal entries with lines and related accounts.',
+                    parameters: [
+                        { name: 'entry_type', in: 'query', schema: { type: 'string', example: 'payment_received' } },
+                        { name: 'reference_type', in: 'query', schema: { type: 'string', example: 'App\\Models\\Payment' } },
+                        { name: 'date_from', in: 'query', schema: { type: 'string', format: 'date', example: '2026-03-01' } },
+                        { name: 'date_to', in: 'query', schema: { type: 'string', format: 'date', example: '2026-03-31' } },
+                        { name: 'per_page', in: 'query', schema: { type: 'integer', default: 20 } }
+                    ],
+                    responses: {
+                        '200': {
+                            description: 'Paginated journal entries',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            data: {
+                                                type: 'array',
+                                                items: { $ref: '#/components/schemas/JournalEntry' }
+                                            },
+                                            meta: { $ref: '#/components/schemas/PaginatedMeta' }
                                         }
                                     }
                                 }
