@@ -16,11 +16,22 @@ class CustomerFactory extends Factory
      */
     public function definition(): array
     {
+        $type = fake()->randomElement([
+            'retail',
+            'retail',
+            'retail',
+            'wholesale',
+        ]);
+
         return [
             'name' => fake()->company(),
-            'type' => fake()->randomElement(['retail','wholesale']),
-            'discount_percent' => fake()->randomFloat(2,0,15),
-            'credit_limit' => fake()->numberBetween(0,20000)
+            'type' => $type,
+            'discount_percent' => $type === 'wholesale'
+                ? fake()->randomFloat(2, 3, 12)
+                : fake()->randomFloat(2, 0, 5),
+            'credit_limit' => $type === 'wholesale'
+                ? fake()->numberBetween(5000, 35000)
+                : fake()->numberBetween(250, 8000),
         ];
     }
 }

@@ -9,7 +9,7 @@ class OrderItemFactory extends Factory
 {
     public function definition(): array
     {
-        $product = Product::inRandomOrder()->first();
+        $product = Product::query()->inRandomOrder()->first() ?? Product::factory()->create();
 
         return [
             'product_id' => $product->id,

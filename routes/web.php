@@ -96,6 +96,12 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
     Route::get('/customers', [CustomerController::class, 'index'])
         ->middleware('auth')
         ->name('customers.index');
+    Route::get('/customers/create', [CustomerController::class, 'create'])
+        ->middleware('auth')
+        ->name('customers.create');
+    Route::post('/customers', [CustomerController::class, 'store'])
+        ->middleware('auth')
+        ->name('customers.store');
 
 
     Route::get('/suppliers', [SupplierController::class, 'index'])

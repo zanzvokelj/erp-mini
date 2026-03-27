@@ -104,32 +104,82 @@
 
             </table>
 
+            <div class="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+                <p id="overduePaginationSummary" class="text-sm text-gray-500">
+                    Showing 0-0 of 0 overdue invoices
+                </p>
+
+                <div class="flex items-center gap-2">
+                    <button
+                        id="overduePrev"
+                        type="button"
+                        class="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Previous
+                    </button>
+
+                    <span id="overduePageInfo" class="text-sm text-gray-600">Page 1 of 1</span>
+
+                    <button
+                        id="overdueNext"
+                        type="button"
+                        class="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
+
         </div>
 
     </div>
 
     <script>
+        const currencyFormatter = new Intl.NumberFormat('sl-SI', {
+            style: 'currency',
+            currency: 'EUR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
 
-        async function loadFinance(){
+        function formatMoney(value) {
+            return currencyFormatter.format(Number(value ?? 0));
+        }
 
-            const res = await fetch('/api/v1/finance/overview');
+        let overduePage = 1;
+        const overduePerPage = 10;
+
+        async function loadFinance(page = 1){
+            overduePage = page;
+
+            const res = await fetch(`/api/v1/finance/overview?page=${page}&per_page=${overduePerPage}`);
             const data = await res.json();
 
             // KPI
             document.getElementById('revenue').innerText =
-                "€" + data.revenue.toFixed(2);
+                formatMoney(data.revenue);
 
             document.getElementById('outstanding').innerText =
-                "€" + data.outstanding.toFixed(2);
+                formatMoney(data.outstanding);
 
             document.getElementById('overdue').innerText =
-                "€" + data.overdue.toFixed(2);
+                formatMoney(data.overdue);
 
             document.getElementById('thisMonth').innerText =
-                "€" + data.this_month.toFixed(2);
+                formatMoney(data.this_month);
 
             // 🔥 TABLE RENDER
             const table = document.getElementById('overdueTable');
+            const pagination = data.overdue_pagination ?? {};
+            const summary = document.getElementById('overduePaginationSummary');
+            const pageInfo = document.getElementById('overduePageInfo');
+            const prevButton = document.getElementById('overduePrev');
+            const nextButton = document.getElementById('overdueNext');
+
+            summary.innerText = `Showing ${pagination.from ?? 0}-${pagination.to ?? 0} of ${pagination.total ?? 0} overdue invoices`;
+            pageInfo.innerText = `Page ${pagination.current_page ?? 1} of ${pagination.last_page ?? 1}`;
+            prevButton.disabled = (pagination.current_page ?? 1) <= 1;
+            nextButton.disabled = !Boolean(pagination.has_more_pages);
 
             if(!data.overdue_invoices.length){
                 table.innerHTML = `
@@ -147,12 +197,22 @@ No overdue invoices 🎉
 
 <td class="p-4 font-medium">${i.invoice_number}</td>
 <td class="p-4">${i.customer?.name ?? '-'}</td>
-<td class="p-4 text-red-600">€${parseFloat(i.total).toFixed(2)}</td>
+<td class="p-4 text-red-600">${formatMoney(i.open_amount ?? i.total)}</td>
 <td class="p-4">${i.due_date ?? '-'}</td>
 
 </tr>
 `).join('');
         }
+
+        document.getElementById('overduePrev').addEventListener('click', () => {
+            if (overduePage > 1) {
+                loadFinance(overduePage - 1);
+            }
+        });
+
+        document.getElementById('overdueNext').addEventListener('click', () => {
+            loadFinance(overduePage + 1);
+        });
 
         loadFinance();
 

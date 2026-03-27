@@ -16,9 +16,12 @@
                 Customers
             </h1>
 
-            <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            <a
+                href="{{ route('customers.create') }}"
+                class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
                 Add Customer
-            </button>
+            </a>
 
         </div>
 

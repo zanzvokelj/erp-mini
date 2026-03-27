@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Services;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 class AnalyticsService
 {
@@ -28,12 +29,32 @@ class AnalyticsService
     }
     public function monthlyRevenue()
     {
-        return DB::table('orders')
+        $start = now()->copy()->startOfMonth()->subMonths(5);
+
+        $raw = DB::table('orders')
             ->selectRaw("DATE_TRUNC('month', created_at) as month, SUM(total) as revenue")
             ->where('status', 'completed')
+            ->where('created_at', '>=', $start)
             ->groupBy('month')
             ->orderBy('month')
-            ->get();
+            ->get()
+            ->mapWithKeys(function ($row) {
+                $month = Carbon::parse($row->month)->format('Y-m');
+
+                return [$month => round((float) $row->revenue, 2)];
+            });
+
+        return collect(range(0, 5))
+            ->map(function (int $offset) use ($start, $raw) {
+                $month = $start->copy()->addMonths($offset);
+                $key = $month->format('Y-m');
+
+                return [
+                    'month' => $key,
+                    'label' => $month->format('M Y'),
+                    'revenue' => (float) ($raw[$key] ?? 0),
+                ];
+            });
     }
 
     public function recentOrders()
