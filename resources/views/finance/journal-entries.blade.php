@@ -10,12 +10,21 @@
                 </p>
             </div>
 
-            <a
-                href="{{ route('finance.index') }}"
-                class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
-            >
-                Back to Finance
-            </a>
+            <div class="flex items-center gap-3">
+                <a
+                    href="{{ route('finance.trial-balance.index') }}"
+                    class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                >
+                    Trial Balance
+                </a>
+
+                <a
+                    href="{{ route('finance.index') }}"
+                    class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                >
+                    Back to Finance
+                </a>
+            </div>
         </div>
 
         <div class="bg-white border border-gray-200 rounded-xl p-4">

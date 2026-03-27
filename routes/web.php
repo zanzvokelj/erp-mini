@@ -12,6 +12,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\TrialBalanceController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\OrderItem;
 use App\Http\Controllers\TransferController;
@@ -180,6 +181,9 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
 
     Route::get('/finance/journal-entries', [JournalEntryController::class, 'index'])
         ->name('finance.journal-entries.index');
+
+    Route::get('/finance/trial-balance', [TrialBalanceController::class, 'index'])
+        ->name('finance.trial-balance.index');
 
     Route::get('/transfers', [TransferController::class, 'index'])
         ->name('transfers.index');

@@ -5,10 +5,16 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\JournalEntry;
+use App\Services\TrialBalanceService;
 use Illuminate\Http\Request;
 
 class FinanceApiController extends Controller
 {
+    public function __construct(
+        protected TrialBalanceService $trialBalanceService
+    ) {
+    }
+
     public function overview()
     {
         // 💰 TOTAL REVENUE
@@ -75,5 +81,15 @@ class FinanceApiController extends Controller
             ->paginate($request->integer('per_page', 20));
 
         return response()->json($entries);
+    }
+
+    public function trialBalance(Request $request)
+    {
+        return response()->json(
+            $this->trialBalanceService->build(
+                $request->string('date_from')->toString() ?: null,
+                $request->string('date_to')->toString() ?: null,
+            )
+        );
     }
 }
