@@ -9,14 +9,17 @@ use App\Models\JournalEntry;
 use App\Services\BalanceSheetService;
 use App\Services\ProfitAndLossService;
 use App\Services\TrialBalanceService;
+use App\Services\VatSummaryService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class FinanceApiController extends Controller
 {
     public function __construct(
         protected TrialBalanceService $trialBalanceService,
         protected ProfitAndLossService $profitAndLossService,
-        protected BalanceSheetService $balanceSheetService
+        protected BalanceSheetService $balanceSheetService,
+        protected VatSummaryService $vatSummaryService
     ) {
     }
 
@@ -126,5 +129,54 @@ class FinanceApiController extends Controller
                 ->orderBy('code')
                 ->paginate($request->integer('per_page', 50))
         );
+    }
+
+    public function vatSummary(Request $request)
+    {
+        return response()->json(
+            $this->vatSummaryService->build(
+                $request->string('date_from')->toString() ?: null,
+                $request->string('date_to')->toString() ?: null,
+            )
+        );
+    }
+
+    public function storeAccount(Request $request)
+    {
+        $validated = $this->validateAccount($request);
+
+        $account = Account::create($validated + [
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return response()->json($account, 201);
+    }
+
+    public function updateAccount(Request $request, Account $account)
+    {
+        $validated = $this->validateAccount($request, $account->id);
+
+        $account->update($validated + [
+            'is_active' => $request->boolean('is_active', false),
+        ]);
+
+        return response()->json($account->fresh());
+    }
+
+    protected function validateAccount(Request $request, ?int $accountId = null): array
+    {
+        $codeRule = Rule::unique('accounts', 'code');
+
+        if ($accountId !== null) {
+            $codeRule->ignore($accountId);
+        }
+
+        return $request->validate([
+            'code' => ['required', 'string', 'max:255', $codeRule],
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'in:' . implode(',', Account::TYPES)],
+            'category' => ['nullable', 'in:' . implode(',', Account::CATEGORIES)],
+            'subtype' => ['nullable', 'string', 'max:255'],
+        ]);
     }
 }

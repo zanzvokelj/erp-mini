@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\BalanceSheetController;
 use App\Http\Controllers\AccountingPeriodController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\VatSummaryController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
@@ -185,6 +186,8 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
 
     Route::get('/finance/journal-entries', [JournalEntryController::class, 'index'])
         ->name('finance.journal-entries.index');
+    Route::post('/finance/journal-entries/{entry}/reverse', [JournalEntryController::class, 'reverse'])
+        ->name('finance.journal-entries.reverse');
 
     Route::get('/finance/trial-balance', [TrialBalanceController::class, 'index'])
         ->name('finance.trial-balance.index');
@@ -195,8 +198,21 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
     Route::get('/finance/balance-sheet', [BalanceSheetController::class, 'index'])
         ->name('finance.balance-sheet.index');
 
+    Route::get('/finance/vat-summary', [VatSummaryController::class, 'index'])
+        ->name('finance.vat-summary.index');
+
     Route::get('/finance/accounts', [AccountController::class, 'index'])
         ->name('finance.accounts.index');
+    Route::get('/finance/accounts/create', [AccountController::class, 'create'])
+        ->name('finance.accounts.create');
+    Route::post('/finance/accounts', [AccountController::class, 'store'])
+        ->name('finance.accounts.store');
+    Route::get('/finance/accounts/{account}/edit', [AccountController::class, 'edit'])
+        ->name('finance.accounts.edit');
+    Route::put('/finance/accounts/{account}', [AccountController::class, 'update'])
+        ->name('finance.accounts.update');
+    Route::post('/finance/accounts/{account}/toggle', [AccountController::class, 'toggle'])
+        ->name('finance.accounts.toggle');
 
     Route::get('/finance/periods', [AccountingPeriodController::class, 'index'])
         ->name('finance.periods.index');

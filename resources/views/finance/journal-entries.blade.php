@@ -102,6 +102,18 @@
         </div>
 
         <div class="space-y-4">
+            @if(session('success'))
+                <div class="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             @forelse($entries as $entry)
                 <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
 
@@ -112,6 +124,16 @@
                                 <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
                                     {{ str_replace('_', ' ', $entry->entry_type) }}
                                 </span>
+                                @if($entry->reversal_of_journal_entry_id)
+                                    <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700">
+                                        Reversal
+                                    </span>
+                                @endif
+                                @if($entry->reversalEntry)
+                                    <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">
+                                        Reversed
+                                    </span>
+                                @endif
                             </div>
                             <p class="text-sm text-gray-600 mt-1">
                                 {{ $entry->description ?: 'Journal entry' }}
@@ -121,6 +143,14 @@
                         <div class="text-sm text-gray-500 text-right">
                             <div>Posted: {{ optional($entry->posted_at)->format('Y-m-d H:i') }}</div>
                             <div>Ref: {{ class_basename($entry->reference_type) }} #{{ $entry->reference_id }}</div>
+                            @if(! $entry->reversal_of_journal_entry_id && ! $entry->reversalEntry)
+                                <form method="POST" action="{{ route('finance.journal-entries.reverse', $entry) }}" class="mt-2">
+                                    @csrf
+                                    <button class="px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white hover:bg-gray-50">
+                                        Reverse Entry
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
 

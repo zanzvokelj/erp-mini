@@ -7,6 +7,13 @@
 
             <div class="flex items-center gap-3">
                 <a
+                    href="{{ route('finance.vat-summary.index') }}"
+                    class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                >
+                    VAT Summary
+                </a>
+
+                <a
                     href="{{ route('finance.periods.index') }}"
                     class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
                 >

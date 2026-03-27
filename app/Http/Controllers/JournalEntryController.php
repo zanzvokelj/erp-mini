@@ -3,10 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\JournalEntry;
+use App\Services\LedgerService;
 use Illuminate\Http\Request;
 
 class JournalEntryController extends Controller
 {
+    public function __construct(
+        protected LedgerService $ledgerService
+    ) {
+    }
+
     public function index(Request $request)
     {
         $entryTypes = JournalEntry::query()
@@ -21,7 +27,7 @@ class JournalEntryController extends Controller
             ->orderBy('reference_type')
             ->pluck('reference_type');
 
-        $entries = JournalEntry::with(['lines.account'])
+        $entries = JournalEntry::with(['lines.account', 'reversalEntry'])
             ->when($request->filled('entry_type'), function ($query) use ($request) {
                 $query->where('entry_type', $request->string('entry_type'));
             })
@@ -44,5 +50,16 @@ class JournalEntryController extends Controller
             'entryTypes' => $entryTypes,
             'referenceTypes' => $referenceTypes,
         ]);
+    }
+
+    public function reverse(Request $request, JournalEntry $entry)
+    {
+        try {
+            $this->ledgerService->reverse($entry, $request->user());
+
+            return back()->with('success', "Journal entry {$entry->entry_number} reversed.");
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 }
