@@ -11,6 +11,9 @@ class PurchaseOrder extends Model
         'supplier_id',
         'warehouse_id',
         'status',
+        'subtotal',
+        'tax',
+        'tax_rate',
         'total',
         'ordered_at',
         'received_at'

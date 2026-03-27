@@ -72,6 +72,45 @@ class AccountingTest extends TestCase
         $this->assertDatabaseHas('accounts', ['code' => '5000']);
     }
 
+    public function test_invoice_generation_with_tax_records_output_vat()
+    {
+        $this->seed(AccountingSeeder::class);
+        $this->actingAsAdmin();
+
+        $customer = Customer::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $product = Product::factory()->create([
+            'price' => 100,
+            'cost_price' => 40,
+        ]);
+
+        app(ProductService::class)->adjustStock($product, $warehouse->id, 'in', 10, 'restock');
+
+        $orderService = app(OrderService::class);
+        $order = $orderService->createDraftOrder($customer->id, $warehouse->id);
+        $orderService->addItem($order, $product, 2);
+        $orderService->confirmOrder($order);
+        $orderService->shipOrder($order);
+
+        $invoice = app(InvoiceService::class)->generateFromOrder($order, 22);
+
+        $entry = JournalEntry::with('lines.account')
+            ->where('entry_type', 'invoice_issued')
+            ->where('reference_type', Invoice::class)
+            ->where('reference_id', $invoice->id)
+            ->first();
+
+        $this->assertNotNull($entry);
+        $this->assertCount(3, $entry->lines);
+        $this->assertEquals(244.0, (float) $entry->lines->sum('debit'));
+        $this->assertEquals(244.0, (float) $entry->lines->sum('credit'));
+        $this->assertDatabaseHas('accounts', ['code' => '2100']);
+        $this->assertDatabaseHas('journal_lines', [
+            'journal_entry_id' => $entry->id,
+            'credit' => 44.00,
+        ]);
+    }
+
     public function test_payment_records_accounting_entry_as_side_effect()
     {
         $this->seed(AccountingSeeder::class);
@@ -149,6 +188,51 @@ class AccountingTest extends TestCase
         $this->assertEquals(150.0, (float) $entry->lines->sum('credit'));
         $this->assertDatabaseHas('accounts', ['code' => '1200']);
         $this->assertDatabaseHas('accounts', ['code' => '2000']);
+    }
+
+    public function test_purchase_order_receipt_with_tax_records_input_vat()
+    {
+        $this->seed(AccountingSeeder::class);
+
+        $warehouse = Warehouse::factory()->create();
+        $supplier = Supplier::factory()->create();
+        $product = Product::factory()->create();
+
+        $po = PurchaseOrder::create([
+            'po_number' => 'PO-ACC-TAX-001',
+            'supplier_id' => $supplier->id,
+            'warehouse_id' => $warehouse->id,
+            'status' => 'ordered',
+            'subtotal' => 150,
+            'tax' => 33,
+            'tax_rate' => 22,
+            'total' => 183,
+        ]);
+
+        PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'product_id' => $product->id,
+            'quantity' => 10,
+            'cost_price' => 15,
+        ]);
+
+        app(PurchaseOrderService::class)->receive($po);
+
+        $entry = JournalEntry::with('lines.account')
+            ->where('entry_type', 'purchase_order_received')
+            ->where('reference_type', PurchaseOrder::class)
+            ->where('reference_id', $po->id)
+            ->first();
+
+        $this->assertNotNull($entry);
+        $this->assertCount(3, $entry->lines);
+        $this->assertEquals(183.0, (float) $entry->lines->sum('debit'));
+        $this->assertEquals(183.0, (float) $entry->lines->sum('credit'));
+        $this->assertDatabaseHas('accounts', ['code' => '1300']);
+        $this->assertDatabaseHas('journal_lines', [
+            'journal_entry_id' => $entry->id,
+            'debit' => 33.00,
+        ]);
     }
 
     public function test_supplier_payment_records_accounting_entry_as_side_effect()

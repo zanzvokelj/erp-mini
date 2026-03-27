@@ -40,14 +40,16 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'supplier_id' => ['required','exists:suppliers,id'],
-            'warehouse_id' => ['required','exists:warehouses,id']
+            'warehouse_id' => ['required','exists:warehouses,id'],
+            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $po = PurchaseOrder::create([
             'po_number' => 'PO-' . now()->timestamp,
             'supplier_id' => $request->supplier_id,
             'warehouse_id' => $request->warehouse_id,
-            'status' => 'draft'
+            'status' => 'draft',
+            'tax_rate' => (float) $request->input('tax_rate', 0),
         ]);
 
         return redirect()->route('purchase-orders.show', $po);
@@ -83,11 +85,16 @@ class PurchaseOrderController extends Controller
             'cost_price' => $request->cost_price
         ]);
 
-        $total = PurchaseOrderItem::where('purchase_order_id', $po->id)
+        $subtotal = (float) PurchaseOrderItem::where('purchase_order_id', $po->id)
             ->selectRaw('SUM(quantity * cost_price) as total')
             ->value('total');
 
+        $tax = round($subtotal * (((float) $po->tax_rate) / 100), 2);
+        $total = round($subtotal + $tax, 2);
+
         $po->update([
+            'subtotal' => $subtotal,
+            'tax' => $tax,
             'total' => $total
         ]);
 

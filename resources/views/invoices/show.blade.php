@@ -40,7 +40,17 @@
         <!-- SUMMARY -->
         <div class="bg-white rounded-xl shadow border p-6">
 
-            <div class="grid grid-cols-3 gap-6">
+            <div class="grid grid-cols-5 gap-6">
+
+                <div>
+                    <p class="text-gray-500 text-sm">Subtotal</p>
+                    <p id="invoiceSubtotal" class="text-xl font-semibold"></p>
+                </div>
+
+                <div>
+                    <p class="text-gray-500 text-sm">Tax</p>
+                    <p id="invoiceTax" class="text-xl font-semibold text-amber-600"></p>
+                </div>
 
                 <div>
                     <p class="text-gray-500 text-sm">Total</p>
@@ -187,6 +197,8 @@
 
             const remaining = parseFloat(invoice.total) - paid;
 
+            document.getElementById('invoiceSubtotal').innerText = "€"+parseFloat(invoice.subtotal).toFixed(2);
+            document.getElementById('invoiceTax').innerText = "€"+parseFloat(invoice.tax).toFixed(2);
             document.getElementById('invoiceTotal').innerText = "€"+parseFloat(invoice.total).toFixed(2);
             document.getElementById('invoicePaid').innerText = "€"+paid.toFixed(2);
             document.getElementById('invoiceRemaining').innerText = "€"+remaining.toFixed(2);

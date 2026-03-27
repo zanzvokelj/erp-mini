@@ -40,6 +40,17 @@
 
             </select>
 
+            <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                name="tax_rate"
+                value="0"
+                placeholder="Tax rate %"
+                class="w-full border rounded px-3 py-2 mb-4"
+            >
+
             <button
                 class="bg-blue-600 text-white px-4 py-2 rounded"
             >

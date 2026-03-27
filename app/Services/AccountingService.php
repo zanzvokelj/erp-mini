@@ -9,10 +9,16 @@ use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\Order;
 use App\Models\SupplierPayment;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AccountingService
 {
+    public function __construct(
+        protected AccountingPeriodService $accountingPeriodService
+    ) {
+    }
+
     public function recordInvoiceIssued(Invoice $invoice): JournalEntry
     {
         $invoice->loadMissing('customer');
@@ -72,9 +78,11 @@ class AccountingService
     {
         $purchaseOrder->loadMissing('items');
 
-        $total = (float) $purchaseOrder->items->sum(
+        $subtotal = (float) $purchaseOrder->items->sum(
             fn ($item) => $item->quantity * $item->cost_price
         );
+        $tax = round((float) ($purchaseOrder->tax ?? 0), 2);
+        $total = round($subtotal + $tax, 2);
 
         return $this->recordEntry(
             entryType: 'purchase_order_received',
@@ -82,18 +90,23 @@ class AccountingService
             referenceId: $purchaseOrder->id,
             description: "Purchase order {$purchaseOrder->po_number} received",
             postedAt: $purchaseOrder->received_at ?? now(),
-            lines: [
+            lines: array_filter([
                 [
                     'account_code' => '1200',
-                    'debit' => $total,
+                    'debit' => $subtotal,
                     'credit' => 0,
                 ],
+                $tax > 0 ? [
+                    'account_code' => '1300',
+                    'debit' => $tax,
+                    'credit' => 0,
+                ] : null,
                 [
                     'account_code' => '2000',
                     'debit' => 0,
                     'credit' => $total,
                 ],
-            ]
+            ])
         );
     }
 
@@ -176,13 +189,16 @@ class AccountingService
                 return $existing->load('lines.account');
             }
 
+            $postingDate = Carbon::parse($postedAt);
+            $this->accountingPeriodService->assertPostingAllowed($postingDate);
+
             $entry = JournalEntry::create([
                 'entry_number' => $this->generateEntryNumber(),
                 'entry_type' => $entryType,
                 'reference_type' => $referenceType,
                 'reference_id' => $referenceId,
                 'description' => $description,
-                'posted_at' => $postedAt,
+                'posted_at' => $postingDate,
             ]);
 
             $lineNumber = 1;

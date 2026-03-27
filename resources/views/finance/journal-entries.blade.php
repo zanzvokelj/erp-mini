@@ -12,6 +12,20 @@
 
             <div class="flex items-center gap-3">
                 <a
+                    href="{{ route('finance.balance-sheet.index') }}"
+                    class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                >
+                    Balance Sheet
+                </a>
+
+                <a
+                    href="{{ route('finance.profit-and-loss.index') }}"
+                    class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                >
+                    Profit &amp; Loss
+                </a>
+
+                <a
                     href="{{ route('finance.trial-balance.index') }}"
                     class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
                 >

@@ -80,5 +80,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/finance/overview', [FinanceApiController::class, 'overview']);
         Route::get('/finance/journal-entries', [FinanceApiController::class, 'journalEntries']);
         Route::get('/finance/trial-balance', [FinanceApiController::class, 'trialBalance']);
+        Route::get('/finance/profit-and-loss', [FinanceApiController::class, 'profitAndLoss']);
+        Route::get('/finance/balance-sheet', [FinanceApiController::class, 'balanceSheet']);
+        Route::get('/finance/accounts', [FinanceApiController::class, 'accounts']);
     });
 });

@@ -272,7 +272,7 @@ class OrderApiController extends Controller
         }
     }
 
-    public function createInvoice(Order $order)
+    public function createInvoice(Request $request, Order $order)
     {
         if ($order->status !== 'shipped') {
             return response()->json([
@@ -286,7 +286,14 @@ class OrderApiController extends Controller
             ], 400);
         }
 
-        $invoice = $this->invoiceService->generateFromOrder($order);
+        $request->validate([
+            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        $invoice = $this->invoiceService->generateFromOrder(
+            $order,
+            (float) $request->input('tax_rate', 0)
+        );
 
         return response()->json([
             'message' => 'Invoice created',

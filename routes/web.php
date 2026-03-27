@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\BalanceSheetController;
+use App\Http\Controllers\AccountingPeriodController;
+use App\Http\Controllers\AccountController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
@@ -12,6 +15,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\ProfitAndLossController;
 use App\Http\Controllers\TrialBalanceController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\OrderItem;
@@ -184,6 +188,24 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
 
     Route::get('/finance/trial-balance', [TrialBalanceController::class, 'index'])
         ->name('finance.trial-balance.index');
+
+    Route::get('/finance/profit-and-loss', [ProfitAndLossController::class, 'index'])
+        ->name('finance.profit-and-loss.index');
+
+    Route::get('/finance/balance-sheet', [BalanceSheetController::class, 'index'])
+        ->name('finance.balance-sheet.index');
+
+    Route::get('/finance/accounts', [AccountController::class, 'index'])
+        ->name('finance.accounts.index');
+
+    Route::get('/finance/periods', [AccountingPeriodController::class, 'index'])
+        ->name('finance.periods.index');
+
+    Route::post('/finance/periods/{period}/close', [AccountingPeriodController::class, 'close'])
+        ->name('finance.periods.close');
+
+    Route::post('/finance/periods/{period}/reopen', [AccountingPeriodController::class, 'reopen'])
+        ->name('finance.periods.reopen');
 
     Route::get('/transfers', [TransferController::class, 'index'])
         ->name('transfers.index');

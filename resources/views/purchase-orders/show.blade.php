@@ -37,6 +37,27 @@
 
                 <div>
                     <div class="text-sm text-gray-500 mb-1">
+                        Subtotal
+                    </div>
+
+                    <div class="font-medium">
+                        €{{ number_format((float) $po->subtotal, 2) }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-sm text-gray-500 mb-1">
+                        Tax
+                    </div>
+
+                    <div class="font-medium">
+                        €{{ number_format((float) $po->tax, 2) }}
+                        <span class="text-sm text-gray-500">({{ number_format((float) $po->tax_rate, 2) }}%)</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-sm text-gray-500 mb-1">
                         Total
                     </div>
 
