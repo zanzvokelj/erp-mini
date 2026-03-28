@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\OrderActivity;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InvoicePaymentService
 {
@@ -19,13 +20,26 @@ class InvoicePaymentService
         float $amount,
         ?string $paymentMethod = null
     ): Payment {
-        return DB::transaction(function () use ($invoice, $amount, $paymentMethod) {
+        try {
+            DB::beginTransaction();
+
+            Log::info('PAYMENT START', [
+                'invoice_id' => $invoice->id,
+                'amount' => $amount,
+                'method' => $paymentMethod,
+            ]);
+
             $invoice = Invoice::query()
                 ->with(['payments', 'order'])
                 ->lockForUpdate()
                 ->findOrFail($invoice->id);
 
             $totalPaid = (float) $invoice->payments->sum('amount');
+
+            Log::info('PAYMENT STATE', [
+                'total' => $invoice->total,
+                'already_paid' => $totalPaid,
+            ]);
 
             if (($totalPaid + $amount) > (float) $invoice->total) {
                 throw new \DomainException('Payment exceeds invoice total');
@@ -36,6 +50,10 @@ class InvoicePaymentService
                 'amount' => $amount,
                 'payment_method' => $paymentMethod,
                 'paid_at' => now(),
+            ]);
+
+            Log::info('PAYMENT CREATED', [
+                'payment_id' => $payment->id,
             ]);
 
             $newTotalPaid = $totalPaid + $amount;
@@ -52,8 +70,22 @@ class InvoicePaymentService
             $this->syncInvoiceStatus($invoice->fresh(['payments', 'order']));
             $this->accountingService->recordPaymentReceived($payment);
 
+            DB::commit();
+
             return $payment->fresh();
-        });
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('PAYMENT FAILED ❌', [
+                'message' => $e->getMessage(),
+                'invoice_id' => $invoice->id ?? null,
+                'amount' => $amount,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
     }
 
     public function syncInvoiceStatus(Invoice $invoice): Invoice
