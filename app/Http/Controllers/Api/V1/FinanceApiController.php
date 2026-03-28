@@ -6,16 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Invoice;
 use App\Models\JournalEntry;
+use App\Services\AccountService;
 use App\Services\BalanceSheetService;
 use App\Services\ProfitAndLossService;
 use App\Services\TrialBalanceService;
 use App\Services\VatSummaryService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class FinanceApiController extends Controller
 {
     public function __construct(
+        protected AccountService $accountService,
         protected TrialBalanceService $trialBalanceService,
         protected ProfitAndLossService $profitAndLossService,
         protected BalanceSheetService $balanceSheetService,
@@ -175,40 +176,30 @@ class FinanceApiController extends Controller
 
     public function storeAccount(Request $request)
     {
-        $validated = $this->validateAccount($request);
+        $validated = $request->validate(
+            $this->accountService->validationRules()
+        );
 
-        $account = Account::create($validated + [
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        $account = $this->accountService->create(
+            $validated,
+            $request->boolean('is_active', true)
+        );
 
         return response()->json($account, 201);
     }
 
     public function updateAccount(Request $request, Account $account)
     {
-        $validated = $this->validateAccount($request, $account->id);
+        $validated = $request->validate(
+            $this->accountService->validationRules($account->id)
+        );
 
-        $account->update($validated + [
-            'is_active' => $request->boolean('is_active', false),
-        ]);
+        $account = $this->accountService->update(
+            $account,
+            $validated,
+            $request->boolean('is_active', false)
+        );
 
-        return response()->json($account->fresh());
-    }
-
-    protected function validateAccount(Request $request, ?int $accountId = null): array
-    {
-        $codeRule = Rule::unique('accounts', 'code');
-
-        if ($accountId !== null) {
-            $codeRule->ignore($accountId);
-        }
-
-        return $request->validate([
-            'code' => ['required', 'string', 'max:255', $codeRule],
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:' . implode(',', Account::TYPES)],
-            'category' => ['nullable', 'in:' . implode(',', Account::CATEGORIES)],
-            'subtype' => ['nullable', 'string', 'max:255'],
-        ]);
+        return response()->json($account);
     }
 }

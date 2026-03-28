@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Services\ReorderSuggestionService;
 use App\Models\Product;
-use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
 use Illuminate\Http\Request;
+use App\Services\PurchaseOrderService;
 
 class ReorderController extends Controller
 {
@@ -19,21 +18,17 @@ class ReorderController extends Controller
 
     public function createPO(Request $request)
     {
+        $validated = $request->validate([
+            'product_id' => ['required', 'exists:products,id'],
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
         $product = Product::findOrFail($request->product_id);
 
-        $po = PurchaseOrder::create([
-            'po_number' => 'PO-' . now()->timestamp,
-            'supplier_id' => $product->supplier_id,
-            'status' => 'draft',
-            'total' => $request->quantity * $product->cost_price
-        ]);
-
-        PurchaseOrderItem::create([
-            'purchase_order_id' => $po->id,
-            'product_id' => $product->id,
-            'quantity' => $request->quantity,
-            'cost_price' => $product->cost_price
-        ]);
+        $po = app(PurchaseOrderService::class)->createDraftForProduct(
+            $product,
+            (int) $validated['quantity']
+        );
 
         return redirect()->route('purchase-orders.show',$po);
     }

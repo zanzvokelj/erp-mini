@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'dashboard_cache_ttl' => (int) env('DASHBOARD_CACHE_TTL', 120),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

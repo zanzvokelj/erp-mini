@@ -43,7 +43,7 @@ class ProductService
 
     public function adjustStock(
         Product $product,
-        int $warehouseId,
+        ?int $warehouseId,
         string $type,
         int $quantity,
         ?string $referenceType = null,

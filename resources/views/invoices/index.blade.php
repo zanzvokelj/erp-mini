@@ -40,7 +40,26 @@
                     <th class="p-4">Customer</th>
                     <th class="p-4">Status</th>
                     <th class="p-4">Total</th>
-                    <th class="p-4">Due</th>
+                    <th class="p-4">
+                        <button
+                            type="button"
+                            id="sort-created"
+                            class="inline-flex items-center gap-1 font-medium hover:text-gray-700"
+                            onclick="setSort('created')"
+                        >
+                            Created
+                        </button>
+                    </th>
+                    <th class="p-4">
+                        <button
+                            type="button"
+                            id="sort-due"
+                            class="inline-flex items-center gap-1 font-medium hover:text-gray-700"
+                            onclick="setSort('due')"
+                        >
+                            Due
+                        </button>
+                    </th>
                     <th class="p-4">Action</th>
                 </tr>
                 </thead>
@@ -50,6 +69,11 @@
             </table>
 
         </div>
+
+        <div
+            id="invoicePagination"
+            class="flex items-center justify-between gap-4 text-sm text-gray-600"
+        ></div>
 
     </div>
 
@@ -101,28 +125,57 @@
         let invoices = [];
         let searchTimeout = null;
         let currentInvoiceId = null;
+        let invoicePagination = null;
+        let currentPage = 1;
+        let currentSort = 'created';
 
-        async function loadInvoices() {
+        async function loadInvoices(page = 1) {
+
+            currentPage = page;
 
             const search = document.getElementById('invoiceSearch').value;
             const status = document.getElementById('statusFilter').value;
 
             const params = new URLSearchParams({
                 search: search,
-                status: status
+                status: status,
+                page: page,
+                sort_by: currentSort
             });
 
             const res = await apiFetch(`/api/v1/invoices?${params}`);
             const data = await res.json();
 
             invoices = data.data;
+            invoicePagination = {
+                currentPage: data.current_page,
+                lastPage: data.last_page,
+                perPage: data.per_page,
+                total: data.total,
+                from: data.from,
+                to: data.to
+            };
 
             renderInvoices(invoices);
+            updateSortButtons();
+            renderPagination();
         }
 
         function renderInvoices(list) {
 
             const table = document.getElementById('invoiceTable');
+
+            if (list.length === 0) {
+                table.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-gray-500">
+                            No invoices found.
+                        </td>
+                    </tr>
+                `;
+
+                return;
+            }
 
             table.innerHTML = list.map(invoice => {
 
@@ -173,6 +226,10 @@
     </td>
 
     <td class="p-4">
+        ${invoice.created_at ? new Date(invoice.created_at).toLocaleString() : '-'}
+    </td>
+
+    <td class="p-4">
         ${invoice.due_date ?? '-'}
     </td>
 
@@ -192,6 +249,80 @@
 `;
 
             }).join('');
+        }
+
+        function setSort(sort) {
+            currentSort = sort;
+            loadInvoices(1);
+        }
+
+        function updateSortButtons() {
+            const createdButton = document.getElementById('sort-created');
+            const dueButton = document.getElementById('sort-due');
+
+            createdButton.className = `inline-flex items-center gap-1 font-medium ${currentSort === 'created' ? 'text-gray-900' : 'hover:text-gray-700'}`;
+            dueButton.className = `inline-flex items-center gap-1 font-medium ${currentSort === 'due' ? 'text-gray-900' : 'hover:text-gray-700'}`;
+
+            createdButton.innerHTML = `Created${currentSort === 'created' ? ' <span>&darr;</span>' : ''}`;
+            dueButton.innerHTML = `Due${currentSort === 'due' ? ' <span>&darr;</span>' : ''}`;
+        }
+
+        function renderPagination() {
+
+            const pagination = document.getElementById('invoicePagination');
+
+            if (!invoicePagination) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            if (invoicePagination.lastPage <= 1) {
+                pagination.innerHTML = invoicePagination.total
+                    ? `<div>Showing ${invoicePagination.from}-${invoicePagination.to} of ${invoicePagination.total} invoices</div>`
+                    : '';
+                return;
+            }
+
+            pagination.innerHTML = `
+                <div>
+                    Showing ${invoicePagination.from}-${invoicePagination.to} of ${invoicePagination.total} invoices
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button
+                        class="px-3 py-2 border rounded-lg ${invoicePagination.currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}"
+                        onclick="changePage(${invoicePagination.currentPage - 1})"
+                        ${invoicePagination.currentPage === 1 ? 'disabled' : ''}
+                    >
+                        Previous
+                    </button>
+
+                    <span class="px-3 py-2">
+                        Page ${invoicePagination.currentPage} of ${invoicePagination.lastPage}
+                    </span>
+
+                    <button
+                        class="px-3 py-2 border rounded-lg ${invoicePagination.currentPage === invoicePagination.lastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}"
+                        onclick="changePage(${invoicePagination.currentPage + 1})"
+                        ${invoicePagination.currentPage === invoicePagination.lastPage ? 'disabled' : ''}
+                    >
+                        Next
+                    </button>
+                </div>
+            `;
+        }
+
+        function changePage(page) {
+
+            if (!invoicePagination) {
+                return;
+            }
+
+            if (page < 1 || page > invoicePagination.lastPage) {
+                return;
+            }
+
+            loadInvoices(page);
         }
 
         function quickPay(invoiceId){
@@ -246,19 +377,19 @@
             }
 
             closePaymentModal();
-            loadInvoices();
+            loadInvoices(currentPage);
         }
 
         document.getElementById('invoiceSearch')
             .addEventListener('input', () => {
 
                 clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(loadInvoices, 400);
+                searchTimeout = setTimeout(() => loadInvoices(1), 400);
 
             });
 
         document.getElementById('statusFilter')
-            .addEventListener('change', loadInvoices);
+            .addEventListener('change', () => loadInvoices(1));
 
         loadInvoices();
 

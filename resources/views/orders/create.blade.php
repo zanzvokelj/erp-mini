@@ -30,16 +30,6 @@
                             class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
                         >
 
-                            <option value="">Select customer</option>
-
-                            @foreach($customers as $customer)
-
-                                <option value="{{ $customer->id }}">
-                                    {{ $customer->name }}
-                                </option>
-
-                            @endforeach
-
                         </select>
 
                     </div>
@@ -104,10 +94,24 @@
     <script>
 
         new TomSelect("#customer-select",{
+            valueField: "id",
+            labelField: "name",
+            searchField: ["name"],
             create:false,
-            sortField:{
-                field:"text",
-                direction:"asc"
+            preload: false,
+            load: function(query, callback) {
+                apiFetch(`/api/customers/search?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => callback(data))
+                    .catch(() => callback());
+            },
+            render: {
+                option: function(item, escape) {
+                    return `<div>${escape(item.name)} <span class="text-xs text-gray-500">(${escape(item.type ?? '')})</span></div>`;
+                },
+                item: function(item, escape) {
+                    return `<div>${escape(item.name)}</div>`;
+                }
             }
         });
 

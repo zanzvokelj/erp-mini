@@ -12,7 +12,7 @@ use App\Events\OrderConfirmed;
 use App\Models\OrderActivity;
 use App\Services\InventoryService;
 use App\Events\OrderShipped;
-use Illuminate\Support\Str;
+use App\Models\StockReservation;
 
 class OrderService
 {
@@ -88,7 +88,110 @@ class OrderService
                 "{$product->name} (qty {$quantity}) added"
             );
 
+            $this->calculateTotals($order);
+
             return $item;
+        });
+    }
+
+    public function updateItem(OrderItem $item, int $quantity): OrderItem
+    {
+        return DB::transaction(function () use ($item, $quantity) {
+            $item = OrderItem::query()
+                ->with(['order', 'product'])
+                ->lockForUpdate()
+                ->findOrFail($item->id);
+
+            $order = Order::query()
+                ->lockForUpdate()
+                ->findOrFail($item->order_id);
+
+            $this->assertDraftOrder($order);
+
+            $product = Product::query()
+                ->lockForUpdate()
+                ->findOrFail($item->product_id);
+
+            $reservedForThisOrder = StockReservation::query()
+                ->where('order_id', $order->id)
+                ->where('product_id', $product->id)
+                ->where('warehouse_id', $order->warehouse_id)
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })
+                ->sum('quantity');
+
+            $available = $this->inventoryService->availableStock(
+                $product,
+                $order->warehouse_id
+            );
+
+            $effectiveAvailable = $available + $reservedForThisOrder;
+
+            if ($quantity > $effectiveAvailable) {
+                throw new \Exception("Only {$effectiveAvailable} items available in stock.");
+            }
+
+            $item->update([
+                'quantity' => $quantity,
+            ]);
+
+            if ($reservedForThisOrder > 0) {
+                $this->inventoryService->updateReservation(
+                    $order->id,
+                    $product->id,
+                    $quantity
+                );
+            } else {
+                $this->inventoryService->reserveStock(
+                    $product,
+                    $order->id,
+                    $quantity,
+                    $order->warehouse_id
+                );
+            }
+
+            $this->calculateTotals($order);
+            $this->logActivity(
+                $order,
+                'item_updated',
+                "{$product->name} quantity updated to {$quantity}"
+            );
+
+            return $item->fresh('product');
+        });
+    }
+
+    public function removeItem(OrderItem $item): void
+    {
+        DB::transaction(function () use ($item) {
+            $item = OrderItem::query()
+                ->with(['order', 'product'])
+                ->lockForUpdate()
+                ->findOrFail($item->id);
+
+            $order = Order::query()
+                ->lockForUpdate()
+                ->findOrFail($item->order_id);
+
+            $this->assertDraftOrder($order);
+
+            StockReservation::query()
+                ->where('order_id', $order->id)
+                ->where('product_id', $item->product_id)
+                ->delete();
+
+            $productName = $item->product->name;
+
+            $item->delete();
+
+            $this->calculateTotals($order);
+            $this->logActivity(
+                $order,
+                'item_removed',
+                "{$productName} removed from order"
+            );
         });
     }
 
@@ -182,7 +285,7 @@ class OrderService
         ]);
     }
 
-    public function logActivity(Order $order, string $type, string $description = null)
+    public function logActivity(Order $order, string $type, ?string $description = null)
     {
         OrderActivity::create([
             'order_id' => $order->id,
@@ -328,5 +431,12 @@ class OrderService
         $nextNumber = ($lastOrder->id ?? 0) + 1;
 
         return 'ORD-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+    }
+
+    protected function assertDraftOrder(Order $order): void
+    {
+        if ($order->status !== 'draft') {
+            throw new \Exception('Only draft orders can be edited.');
+        }
     }
 }

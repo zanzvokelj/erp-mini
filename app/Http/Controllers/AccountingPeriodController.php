@@ -33,22 +33,17 @@ class AccountingPeriodController extends Controller
 
     public function close(AccountingPeriod $period, Request $request)
     {
-        $period->update([
-            'status' => 'closed',
-            'closed_at' => now(),
-            'closed_by' => $request->user()?->id,
-        ]);
+        $this->accountingPeriodService->close(
+            $period,
+            $request->user()?->id
+        );
 
         return back()->with('success', "Period {$period->name} closed.");
     }
 
     public function reopen(AccountingPeriod $period)
     {
-        $period->update([
-            'status' => 'open',
-            'closed_at' => null,
-            'closed_by' => null,
-        ]);
+        $this->accountingPeriodService->reopen($period);
 
         return back()->with('success', "Period {$period->name} reopened.");
     }

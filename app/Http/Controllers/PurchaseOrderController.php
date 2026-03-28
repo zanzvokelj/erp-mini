@@ -6,10 +6,7 @@ use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Services\PurchaseOrderService;
-use App\Models\PurchaseOrderItem;
 use App\Models\Warehouse;
-
-
 
 class PurchaseOrderController extends Controller
 {
@@ -38,19 +35,17 @@ class PurchaseOrderController extends Controller
     }
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'supplier_id' => ['required','exists:suppliers,id'],
             'warehouse_id' => ['required','exists:warehouses,id'],
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
-        $po = PurchaseOrder::create([
-            'po_number' => 'PO-' . now()->timestamp,
-            'supplier_id' => $request->supplier_id,
-            'warehouse_id' => $request->warehouse_id,
-            'status' => 'draft',
-            'tax_rate' => (float) $request->input('tax_rate', 0),
-        ]);
+        $po = $this->service->createDraft(
+            supplierId: (int) $validated['supplier_id'],
+            warehouseId: (int) $validated['warehouse_id'],
+            taxRate: (float) ($validated['tax_rate'] ?? 0)
+        );
 
         return redirect()->route('purchase-orders.show', $po);
     }
@@ -73,40 +68,25 @@ class PurchaseOrderController extends Controller
 
     public function addItem(Request $request, PurchaseOrder $po)
     {
-        $request->validate([
+        $validated = $request->validate([
             'product_id' => ['required','exists:products,id'],
             'quantity' => ['required','integer','min:1'],
             'cost_price' => ['required','numeric']
         ]);
 
-        $po->items()->create([
-            'product_id' => $request->product_id,
-            'quantity' => $request->quantity,
-            'cost_price' => $request->cost_price
-        ]);
+        $this->service->addItem(
+            $po,
+            (int) $validated['product_id'],
+            (int) $validated['quantity'],
+            (float) $validated['cost_price']
+        );
 
-        $subtotal = (float) PurchaseOrderItem::where('purchase_order_id', $po->id)
-            ->selectRaw('SUM(quantity * cost_price) as total')
-            ->value('total');
-
-        $tax = round($subtotal * (((float) $po->tax_rate) / 100), 2);
-        $total = round($subtotal + $tax, 2);
-
-        $po->update([
-            'subtotal' => $subtotal,
-            'tax' => $tax,
-            'total' => $total
-        ]);
-
-        return back();
+        return back()->with('success', 'Item added');
     }
 
     public function order(PurchaseOrder $po)
     {
-        $po->update([
-            'status' => 'ordered',
-            'ordered_at' => now()
-        ]);
+        $this->service->markAsOrdered($po);
 
         return back();
     }

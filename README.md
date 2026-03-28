@@ -2,6 +2,29 @@
 
 A transaction-safe Inventory and Order Management System built with Laravel.
 
+## Seeding Modes
+
+Default `DatabaseSeeder` is production-safe:
+
+- seeds only reference data needed by the application
+- does not create demo admin users
+- does not create simulation transactions
+
+For demo or staging environments, run:
+
+```bash
+php artisan db:seed --class=DemoSeeder
+```
+
+Optional env flags for fresh non-production setups:
+
+```env
+SEED_DEMO_USERS=true
+SEED_DEMO_DATA=true
+```
+
+These flags only affect future seed runs. They do not modify an existing database unless `db:seed` is executed again.
+
 This project demonstrates how a real-world backend system can be designed beyond simple CRUD applications by focusing on:
 
 - transactional safety

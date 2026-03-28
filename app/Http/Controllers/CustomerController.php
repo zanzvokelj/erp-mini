@@ -27,6 +27,27 @@ class CustomerController extends Controller
         return view('customers.create');
     }
 
+    public function search(Request $request)
+    {
+        $query = trim((string) $request->input('q', ''));
+
+        return Customer::query()
+            ->select('id', 'name', 'type')
+            ->when($query !== '', function ($builder) use ($query) {
+                $normalizedQuery = mb_strtolower($query);
+
+                $builder->whereRaw('LOWER(name) LIKE ?', ["%{$normalizedQuery}%"]);
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get()
+            ->map(fn (Customer $customer) => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'type' => $customer->type,
+            ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

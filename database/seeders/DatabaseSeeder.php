@@ -3,36 +3,22 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
-            ['email' => 'admin@admin.com'],
-            [
-                'name' => 'Admin',
-                'password' => Hash::make('password'),
-                'role' => 'admin',
-                'email_verified_at' => now(),
-            ]
-        );
+        $this->call([
+            AccountingSeeder::class,
+            WarehouseSeeder::class,
+        ]);
 
-        User::updateOrCreate(
-            ['email' => 'sadmin@sadmin.com'],
-            [
-                'name' => 'Super Admin',
-                'password' => Hash::make('password'),
-                'role' => 'admin',
-                'email_verified_at' => now(),
-            ]
-        );
+        if (filter_var(env('SEED_DEMO_USERS', false), FILTER_VALIDATE_BOOL)) {
+            $this->call(DemoUsersSeeder::class);
+        }
 
-        $this->call(AccountingSeeder::class);
-        $this->call(WarehouseSeeder::class);
-        $this->call(ErpSimulationSeeder::class);
-
+        if (filter_var(env('SEED_DEMO_DATA', false), FILTER_VALIDATE_BOOL)) {
+            $this->call(ErpSimulationSeeder::class);
+        }
     }
 }

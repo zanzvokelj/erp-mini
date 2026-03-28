@@ -8,14 +8,12 @@ use Illuminate\Http\Request;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\OrderItem;
-use App\Services\InventoryService;
 use App\Models\Warehouse;
 
 class OrderController extends Controller
 {
     public function __construct(
-        protected OrderService $orderService,
-        protected InventoryService $inventoryService
+        protected OrderService $orderService
     ) {}
 
     public function index()
@@ -88,47 +86,31 @@ class OrderController extends Controller
 
     public function create()
     {
-        $customers = Customer::orderBy('name')->get();
         $warehouses = Warehouse::orderBy('name')->get();
 
-        return view('orders.create', compact('customers','warehouses'));
+        return view('orders.create', compact('warehouses'));
     }
 
     public function addItem(Request $request, Order $order)
     {
-        if ($order->status !== 'draft') {
-            return redirect()
-                ->route('orders.show', $order)
-                ->with('error', 'Items can only be added to draft orders.');
-        }
-
-        $request->validate([
+        $validated = $request->validate([
             'product_id' => ['required','exists:products,id'],
             'quantity' => ['required','integer','min:1']
         ]);
 
-        $product = Product::findOrFail($request->product_id);
+        try {
+            $product = Product::findOrFail($validated['product_id']);
 
-        $available = $this->inventoryService
-            ->availableStock($product, $order->warehouse_id);
-
-        if ($request->quantity > $available) {
-
-            return back()->with('error',
-                "Only {$available} items available in stock."
+            $this->orderService->addItem(
+                $order,
+                $product,
+                (int) $validated['quantity']
             );
 
+            return redirect()->route('orders.show', $order);
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        $this->orderService->addItem(
-            $order,
-            $product,
-            $request->quantity
-        );
-
-        $this->orderService->calculateTotals($order);
-
-        return redirect()->route('orders.show', $order);
     }
 
     public function ship(Order $order)
@@ -148,91 +130,51 @@ class OrderController extends Controller
 
     public function complete(Order $order)
     {
-        if ($order->status !== 'shipped') {
-            return back()->with('error', 'Only shipped orders can be completed.');
+        try {
+            $this->orderService->completeOrder($order);
+
+            return back()->with('success', 'Order completed');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        $order->update([
-            'status' => 'completed'
-        ]);
-
-        $this->orderService->logActivity($order, 'completed', 'Order completed');
-
-        return back()->with('success', 'Order completed');
     }
 
 
     public function updateItem(Request $request, OrderItem $item)
     {
-        $order = $item->order;
-
-        if ($order->status !== 'draft') {
-            return back()->with('error','Only draft orders can be edited.');
-        }
-
-        $request->validate([
+        $validated = $request->validate([
             'quantity' => ['required','integer','min:1']
         ]);
 
-        $item->update([
-            'quantity' => $request->quantity
-        ]);
+        try {
+            $this->orderService->updateItem($item, (int) $validated['quantity']);
 
-        // UPDATE RESERVATION
-        $this->inventoryService->updateReservation(
-            $order->id,
-            $item->product_id,
-            $request->quantity
-        );
-
-        $this->orderService->calculateTotals($order);
-
-        $this->orderService->logActivity(
-            $order,
-            'item_updated',
-            "{$item->product->name} quantity updated to {$request->quantity}"
-        );
-
-        return back();
+            return back()->with('success', 'Item updated');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function removeItem(OrderItem $item)
     {
-        $order = $item->order;
+        try {
+            $this->orderService->removeItem($item);
 
-        if ($order->status !== 'draft') {
-            return back()->with('error','Only draft orders can be edited.');
+            return back()->with('success', 'Item removed');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        $productName = $item->product->name;
-
-        // release reservation for this item
-        \App\Models\StockReservation::where('order_id',$order->id)
-            ->where('product_id',$item->product_id)
-            ->delete();
-
-        $item->delete();
-
-        $this->orderService->calculateTotals($order);
-
-        $this->orderService->logActivity(
-            $order,
-            'item_removed',
-            "{$productName} removed from order"
-        );
-
-        return back();
     }
 
     public function cancel(Order $order)
     {
-        if (!in_array($order->status, ['draft','confirmed'])) {
-            return back()->with('error','Only draft or confirmed orders can be cancelled.');
+        try {
+            $this->orderService->cancelOrder($order);
+
+            return back()->with('success','Order cancelled');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        $this->orderService->cancelOrder($order);
-
-        return back()->with('success','Order cancelled');
     }
 
     public function returnOrder(Order $order)
