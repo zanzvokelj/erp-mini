@@ -15,6 +15,8 @@ class DashboardController extends Controller
      */
     public function dashboard()
     {
+        $lowStockProducts = $this->analytics->lowStockProducts();
+
         return view('dashboard', [
 
             'revenue' => $this->analytics->totalRevenue(),
@@ -23,9 +25,9 @@ class DashboardController extends Controller
 
             'avgOrderValue' => $this->analytics->averageOrderValue(),
 
-            'lowStockProducts' => $this->analytics->lowStockProducts(),
+            'lowStockProducts' => $lowStockProducts,
 
-            'lowStockCount' => $this->analytics->lowStockProducts()->count(),
+            'lowStockCount' => $lowStockProducts->count(),
 
             'recentOrders' => $this->analytics->recentOrders(),
 

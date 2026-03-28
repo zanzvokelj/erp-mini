@@ -9,6 +9,8 @@ use App\Services\InventoryForecastService;
 use App\Services\ProductQueryService;
 use App\Models\Warehouse;
 use App\Models\StockMovement;
+use App\Models\StockReservation;
+use Illuminate\Support\Collection;
 
 class ProductController extends Controller
 {
@@ -107,7 +109,73 @@ class ProductController extends Controller
             ->limit(20)
             ->get();
 
-        $productService = app(\App\Services\ProductService::class);
+        $productIds = $products->pluck('id')->all();
+
+        $stockExpr = "
+            SUM(
+                CASE
+                    WHEN type = 'in' THEN quantity
+                    WHEN type = 'out' THEN -quantity
+                    ELSE quantity
+                END
+            )
+        ";
+
+        $activeReservations = StockReservation::query()
+            ->whereIn('product_id', $productIds)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
+
+        if ($warehouseId) {
+            $stockByProduct = StockMovement::query()
+                ->whereIn('product_id', $productIds)
+                ->where('warehouse_id', $warehouseId)
+                ->selectRaw("product_id, COALESCE({$stockExpr}, 0) as stock")
+                ->groupBy('product_id')
+                ->pluck('stock', 'product_id');
+
+            $reservedByProduct = (clone $activeReservations)
+                ->where('warehouse_id', $warehouseId)
+                ->selectRaw('product_id, SUM(quantity) as reserved')
+                ->groupBy('product_id')
+                ->pluck('reserved', 'product_id');
+
+            return response()->json(
+                $products->map(function ($product) use ($stockByProduct, $reservedByProduct) {
+                    $stock = (int) ($stockByProduct[$product->id] ?? 0);
+                    $reserved = (int) ($reservedByProduct[$product->id] ?? 0);
+
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'sku' => $product->sku,
+                        'price' => $product->price,
+                        'stock' => $stock,
+                        'reserved' => $reserved,
+                        'available' => $stock - $reserved,
+                        'source_warehouse_id' => null,
+                        'source_warehouse_name' => null,
+                        'source_stock' => null,
+                        'source_reserved' => null,
+                        'source_available' => null,
+                    ];
+                })
+            );
+        }
+
+        $stockByProduct = StockMovement::query()
+            ->whereIn('product_id', $productIds)
+            ->selectRaw("product_id, COALESCE({$stockExpr}, 0) as stock")
+            ->groupBy('product_id')
+            ->pluck('stock', 'product_id');
+
+        $reservedByProduct = (clone $activeReservations)
+            ->selectRaw('product_id, SUM(quantity) as reserved')
+            ->groupBy('product_id')
+            ->pluck('reserved', 'product_id');
+
         $warehouses = Warehouse::orderByRaw("
                 CASE
                     WHEN LOWER(name) = 'main' THEN 0
@@ -117,52 +185,36 @@ class ProductController extends Controller
             ->orderBy('name')
             ->get();
 
-        $products = $products->map(function ($product) use ($warehouseId, $productService, $warehouses) {
+        $warehouseStocks = StockMovement::query()
+            ->whereIn('product_id', $productIds)
+            ->whereIn('warehouse_id', $warehouses->pluck('id'))
+            ->selectRaw("product_id, warehouse_id, COALESCE({$stockExpr}, 0) as stock")
+            ->groupBy('product_id', 'warehouse_id')
+            ->get()
+            ->groupBy('product_id');
 
-            $stock = $warehouseId
-                ? $productService->calculateStockInWarehouse($product, $warehouseId)
-                : $productService->calculateCurrentStock($product);
+        $warehouseReservations = (clone $activeReservations)
+            ->whereIn('warehouse_id', $warehouses->pluck('id'))
+            ->selectRaw('product_id, warehouse_id, SUM(quantity) as reserved')
+            ->groupBy('product_id', 'warehouse_id')
+            ->get()
+            ->groupBy('product_id');
 
-            $reserved = \App\Models\StockReservation::where('product_id', $product->id)
-                ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
-                ->where(function ($q) {
-                    $q->whereNull('expires_at')
-                        ->orWhere('expires_at', '>', now());
-                })
-                ->sum('quantity');
-
-            $available = $stock - $reserved;
-
-            $sourceWarehouse = null;
-
-            if (! $warehouseId) {
-                $sourceWarehouse = $warehouses
-                    ->map(function ($warehouse) use ($product, $productService) {
-                        $warehouseStock = $productService->calculateStockInWarehouse(
-                            $product,
-                            $warehouse->id
-                        );
-
-                        $warehouseReserved = \App\Models\StockReservation::where('product_id', $product->id)
-                            ->where('warehouse_id', $warehouse->id)
-                            ->where(function ($q) {
-                                $q->whereNull('expires_at')
-                                    ->orWhere('expires_at', '>', now());
-                            })
-                            ->sum('quantity');
-
-                        $warehouseAvailable = $warehouseStock - $warehouseReserved;
-
-                        return [
-                            'id' => $warehouse->id,
-                            'name' => $warehouse->name,
-                            'stock' => $warehouseStock,
-                            'reserved' => $warehouseReserved,
-                            'available' => $warehouseAvailable,
-                        ];
-                    })
-                    ->firstWhere('available', '>', 0);
-            }
+        $products = $products->map(function ($product) use (
+            $stockByProduct,
+            $reservedByProduct,
+            $warehouseStocks,
+            $warehouseReservations,
+            $warehouses
+        ) {
+            $stock = (int) ($stockByProduct[$product->id] ?? 0);
+            $reserved = (int) ($reservedByProduct[$product->id] ?? 0);
+            $sourceWarehouse = $this->firstAvailableWarehouse(
+                $product->id,
+                $warehouses,
+                $warehouseStocks,
+                $warehouseReservations
+            );
 
             return [
                 'id' => $product->id,
@@ -171,7 +223,7 @@ class ProductController extends Controller
                 'price' => $product->price,
                 'stock' => $stock,
                 'reserved' => $reserved,
-                'available' => $available,
+                'available' => $stock - $reserved,
                 'source_warehouse_id' => $sourceWarehouse['id'] ?? null,
                 'source_warehouse_name' => $sourceWarehouse['name'] ?? null,
                 'source_stock' => $sourceWarehouse['stock'] ?? null,
@@ -181,5 +233,33 @@ class ProductController extends Controller
         });
 
         return response()->json($products);
+    }
+
+    protected function firstAvailableWarehouse(
+        int $productId,
+        Collection $warehouses,
+        Collection $warehouseStocks,
+        Collection $warehouseReservations
+    ): ?array {
+        $productStocks = $warehouseStocks->get($productId, collect())->keyBy('warehouse_id');
+        $productReservations = $warehouseReservations->get($productId, collect())->keyBy('warehouse_id');
+
+        foreach ($warehouses as $warehouse) {
+            $stock = (int) ($productStocks->get($warehouse->id)->stock ?? 0);
+            $reserved = (int) ($productReservations->get($warehouse->id)->reserved ?? 0);
+            $available = $stock - $reserved;
+
+            if ($available > 0) {
+                return [
+                    'id' => $warehouse->id,
+                    'name' => $warehouse->name,
+                    'stock' => $stock,
+                    'reserved' => $reserved,
+                    'available' => $available,
+                ];
+            }
+        }
+
+        return null;
     }
 }

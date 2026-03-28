@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\StockReservation;
+use App\Models\StockMovement;
 
 class InventoryService
 {
@@ -24,7 +25,7 @@ class InventoryService
             ->sum('quantity');
     }
 
-    public function availableStock(Product $product, int $warehouseId = null): int
+    public function availableStock(Product $product, ?int $warehouseId = null): int
     {
         $current = $warehouseId
             ? $this->productService->calculateStockInWarehouse($product, $warehouseId)
@@ -77,5 +78,23 @@ class InventoryService
         StockReservation::whereNotNull('expires_at')
             ->where('expires_at', '<', now())
             ->delete();
+    }
+
+    public function adjustStock(
+        Product $product,
+        string $type,
+        int $quantity,
+        ?int $warehouseId = null,
+        ?int $userId = null
+    ): StockMovement {
+        return $this->productService->adjustStock(
+            $product,
+            $warehouseId,
+            $type,
+            $quantity,
+            'manual_adjustment',
+            null,
+            $userId
+        );
     }
 }

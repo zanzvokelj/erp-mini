@@ -102,6 +102,9 @@ Route::middleware(['auth', 'allowed.admin'])->group(function () {
     Route::post('/customers', [CustomerController::class, 'store'])
         ->middleware('auth')
         ->name('customers.store');
+    Route::get('/api/customers/search', [CustomerController::class, 'search'])
+        ->middleware('auth')
+        ->name('customers.search');
 
 
     Route::get('/suppliers', [SupplierController::class, 'index'])

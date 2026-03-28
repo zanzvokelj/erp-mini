@@ -26,7 +26,6 @@ class TransferController extends Controller
     public function create()
     {
         return view('transfers.create', [
-            'products' => Product::all(),
             'warehouses' => Warehouse::orderBy('name')->get()
         ]);
     }

@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Services\AccountService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
+    public function __construct(
+        protected AccountService $accountService
+    ) {}
+
     public function index()
     {
         $accounts = Account::query()
@@ -30,11 +34,14 @@ class AccountController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $this->validateAccount($request);
+        $validated = $request->validate(
+            $this->accountService->validationRules()
+        );
 
-        Account::create($validated + [
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        $this->accountService->create(
+            $validated,
+            $request->boolean('is_active', true)
+        );
 
         return redirect()
             ->route('finance.accounts.index')
@@ -52,11 +59,15 @@ class AccountController extends Controller
 
     public function update(Request $request, Account $account)
     {
-        $validated = $this->validateAccount($request, $account->id);
+        $validated = $request->validate(
+            $this->accountService->validationRules($account->id)
+        );
 
-        $account->update($validated + [
-            'is_active' => $request->boolean('is_active', false),
-        ]);
+        $this->accountService->update(
+            $account,
+            $validated,
+            $request->boolean('is_active', false)
+        );
 
         return redirect()
             ->route('finance.accounts.index')
@@ -65,27 +76,8 @@ class AccountController extends Controller
 
     public function toggle(Account $account)
     {
-        $account->update([
-            'is_active' => ! $account->is_active,
-        ]);
+        $this->accountService->toggle($account);
 
         return back()->with('success', 'Account status updated.');
-    }
-
-    protected function validateAccount(Request $request, ?int $accountId = null): array
-    {
-        $codeRule = Rule::unique('accounts', 'code');
-
-        if ($accountId !== null) {
-            $codeRule->ignore($accountId);
-        }
-
-        return $request->validate([
-            'code' => ['required', 'string', 'max:255', $codeRule],
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:' . implode(',', Account::TYPES)],
-            'category' => ['nullable', 'in:' . implode(',', Account::CATEGORIES)],
-            'subtype' => ['nullable', 'string', 'max:255'],
-        ]);
     }
 }

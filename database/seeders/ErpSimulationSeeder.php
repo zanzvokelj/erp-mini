@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Payment;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -12,8 +11,8 @@ use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Models\WarehouseTransfer;
-use App\Services\AccountingService;
 use App\Services\InvoiceService;
+use App\Services\InvoicePaymentService;
 use App\Services\OrderService;
 use App\Services\ProductService;
 use App\Services\PurchaseOrderService;
@@ -276,8 +275,6 @@ class ErpSimulationSeeder extends Seeder
     {
         $orderService = app(OrderService::class);
         $invoiceService = app(InvoiceService::class);
-        $accountingService = app(AccountingService::class);
-
         for ($i = 0; $i < self::SALES_ORDER_COUNT; $i++) {
             $lifecycle = $this->pickOrderLifecycle();
             $customer = $this->pickCustomer();
@@ -357,13 +354,13 @@ class ErpSimulationSeeder extends Seeder
             Carbon::setTestNow($invoiceAt);
             $invoice = $invoiceService->generateFromOrder($order, $this->pickTaxRate());
 
-            $this->seedInvoicePayments($invoice, $accountingService, $invoiceAt);
+            $this->seedInvoicePayments($invoice, $invoiceAt);
         }
     }
 
     protected function rebalanceFinanceDashboard(): void
     {
-        $accountingService = app(AccountingService::class);
+        $invoicePaymentService = app(InvoicePaymentService::class);
 
         $openInvoices = Invoice::query()
             ->withSum('payments', 'amount')
@@ -416,19 +413,11 @@ class ErpSimulationSeeder extends Seeder
 
             Carbon::setTestNow($paymentDate);
 
-            $payment = Payment::create([
-                'invoice_id' => $invoice->id,
-                'amount' => $openAmount,
-                'payment_method' => fake()->randomElement(['bank_transfer', 'card']),
-                'paid_at' => $paymentDate,
-            ]);
-
-            $accountingService->recordPaymentReceived($payment);
-
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => $paymentDate,
-            ]);
+            $invoicePaymentService->recordPayment(
+                $invoice,
+                $openAmount,
+                fake()->randomElement(['bank_transfer', 'card'])
+            );
         }
 
         $remainingOpenInvoices = Invoice::query()
@@ -467,26 +456,19 @@ class ErpSimulationSeeder extends Seeder
 
             Carbon::setTestNow($paymentDate);
 
-            $payment = Payment::create([
-                'invoice_id' => $invoice->id,
-                'amount' => $openAmount,
-                'payment_method' => fake()->randomElement(['bank_transfer', 'card']),
-                'paid_at' => $paymentDate,
-            ]);
-
-            $accountingService->recordPaymentReceived($payment);
-
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => $paymentDate,
-            ]);
+            $invoicePaymentService->recordPayment(
+                $invoice,
+                $openAmount,
+                fake()->randomElement(['bank_transfer', 'card'])
+            );
 
             $currentOutstanding -= $openAmount;
         }
     }
 
-    protected function seedInvoicePayments(Invoice $invoice, AccountingService $accountingService, Carbon $invoiceAt): void
+    protected function seedInvoicePayments(Invoice $invoice, Carbon $invoiceAt): void
     {
+        $invoicePaymentService = app(InvoicePaymentService::class);
         $scenario = fake()->randomElement([
             'none',
             'none',
@@ -506,18 +488,11 @@ class ErpSimulationSeeder extends Seeder
 
             Carbon::setTestNow($paymentDate);
 
-            $payment = Payment::create([
-                'invoice_id' => $invoice->id,
-                'amount' => $amount,
-                'payment_method' => fake()->randomElement(['bank_transfer', 'card', 'cash']),
-                'paid_at' => $paymentDate,
-            ]);
-
-            $accountingService->recordPaymentReceived($payment);
-
-            $invoice->update([
-                'status' => 'partial',
-            ]);
+            $invoicePaymentService->recordPayment(
+                $invoice,
+                $amount,
+                fake()->randomElement(['bank_transfer', 'card', 'cash'])
+            );
 
             return;
         }
@@ -527,19 +502,11 @@ class ErpSimulationSeeder extends Seeder
 
             Carbon::setTestNow($paymentDate);
 
-            $payment = Payment::create([
-                'invoice_id' => $invoice->id,
-                'amount' => $invoice->total,
-                'payment_method' => fake()->randomElement(['bank_transfer', 'card', 'cash']),
-                'paid_at' => $paymentDate,
-            ]);
-
-            $accountingService->recordPaymentReceived($payment);
-
-            $invoice->update([
-                'status' => 'paid',
-                'paid_at' => $paymentDate,
-            ]);
+            $invoicePaymentService->recordPayment(
+                $invoice,
+                (float) $invoice->total,
+                fake()->randomElement(['bank_transfer', 'card', 'cash'])
+            );
 
             return;
         }
@@ -550,27 +517,18 @@ class ErpSimulationSeeder extends Seeder
         $secondAmount = round((float) $invoice->total - $firstAmount, 2);
 
         Carbon::setTestNow($firstPaymentDate);
-        $firstPayment = Payment::create([
-            'invoice_id' => $invoice->id,
-            'amount' => $firstAmount,
-            'payment_method' => fake()->randomElement(['bank_transfer', 'card']),
-            'paid_at' => $firstPaymentDate,
-        ]);
-        $accountingService->recordPaymentReceived($firstPayment);
+        $invoicePaymentService->recordPayment(
+            $invoice,
+            $firstAmount,
+            fake()->randomElement(['bank_transfer', 'card'])
+        );
 
         Carbon::setTestNow($secondPaymentDate);
-        $secondPayment = Payment::create([
-            'invoice_id' => $invoice->id,
-            'amount' => $secondAmount,
-            'payment_method' => fake()->randomElement(['bank_transfer', 'card']),
-            'paid_at' => $secondPaymentDate,
-        ]);
-        $accountingService->recordPaymentReceived($secondPayment);
-
-        $invoice->update([
-            'status' => 'paid',
-            'paid_at' => $secondPaymentDate,
-        ]);
+        $invoicePaymentService->recordPayment(
+            $invoice,
+            $secondAmount,
+            fake()->randomElement(['bank_transfer', 'card'])
+        );
     }
 
     protected function buildWeightedPool(Collection $products): array

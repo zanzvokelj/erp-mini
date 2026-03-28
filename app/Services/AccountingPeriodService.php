@@ -45,4 +45,26 @@ class AccountingPeriodService
             throw new \RuntimeException("Accounting period {$period->name} is closed.");
         }
     }
+
+    public function close(AccountingPeriod $period, ?int $userId = null): AccountingPeriod
+    {
+        $period->update([
+            'status' => 'closed',
+            'closed_at' => now(),
+            'closed_by' => $userId,
+        ]);
+
+        return $period->fresh();
+    }
+
+    public function reopen(AccountingPeriod $period): AccountingPeriod
+    {
+        $period->update([
+            'status' => 'open',
+            'closed_at' => null,
+            'closed_by' => null,
+        ]);
+
+        return $period->fresh();
+    }
 }

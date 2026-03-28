@@ -12,6 +12,7 @@ class InvoiceApiController extends Controller
     public function index(Request $request)
     {
         $query = Invoice::with(['customer','payments']);
+        $sortBy = $request->string('sort_by')->toString() ?: 'created';
 
         if ($request->search) {
 
@@ -32,7 +33,22 @@ class InvoiceApiController extends Controller
             $query->where('status',$request->status);
         }
 
-        return $query->latest()->paginate(20);
+        $perPage = min(max($request->integer('per_page', 20), 1), 100);
+
+        if ($sortBy === 'due') {
+            $query
+                ->orderByRaw('due_date IS NULL')
+                ->orderByDesc('due_date');
+        } else {
+            $query
+                ->orderByDesc('created_at')
+                ->orderByDesc('issued_at');
+        }
+
+        return $query
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
     }
 
     public function show(Invoice $invoice)

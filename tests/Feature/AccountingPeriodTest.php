@@ -124,4 +124,39 @@ class AccountingPeriodTest extends TestCase
 
         $this->assertEquals(12, AccountingPeriod::whereYear('start_date', 2026)->count());
     }
+
+    public function test_accounting_period_can_be_closed_and_reopened_via_web_flow()
+    {
+        $user = User::factory()->create([
+            'email' => 'admin@admin.com',
+        ]);
+        $this->actingAs($user);
+
+        $period = AccountingPeriod::create([
+            'name' => 'March 2026',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-31',
+            'status' => 'open',
+        ]);
+
+        $closeResponse = $this->post(route('finance.periods.close', $period));
+
+        $closeResponse->assertRedirect();
+
+        $this->assertDatabaseHas('accounting_periods', [
+            'id' => $period->id,
+            'status' => 'closed',
+            'closed_by' => $user->id,
+        ]);
+
+        $reopenResponse = $this->post(route('finance.periods.reopen', $period));
+
+        $reopenResponse->assertRedirect();
+
+        $this->assertDatabaseHas('accounting_periods', [
+            'id' => $period->id,
+            'status' => 'open',
+            'closed_by' => null,
+        ]);
+    }
 }
