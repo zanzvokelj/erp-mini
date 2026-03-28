@@ -42,6 +42,7 @@ WORKDIR /var/www/html
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     unzip \
+    libpq-dev \
     libzip-dev \
     libpng-dev \
     libonig-dev \
