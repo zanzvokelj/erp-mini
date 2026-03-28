@@ -32,15 +32,6 @@ class PaymentApiController extends Controller
             return response()->json([
                 'error' => $exception->getMessage()
             ], 422);
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            return response()->json([
-                'error' => $exception->getMessage(),
-                'exception' => $exception::class,
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ], 500);
         }
     }
 }
