@@ -41,7 +41,7 @@
 
                 <div>
                     <p class="text-gray-500">Customer</p>
-                    <p class="font-medium">{{ $order->customer->name }}</p>
+                    <p class="font-medium">{{ $order->customer->name ?? '-' }}</p>
                 </div>
 
                 <div>

@@ -11,7 +11,8 @@ class InvoicePaymentService
 {
     public function __construct(
         protected AccountingService $accountingService,
-        protected OrderService $orderService
+        protected OrderService $orderService,
+        protected CompanyGuard $companyGuard
     ) {}
 
     public function recordPayment(
@@ -25,6 +26,11 @@ class InvoicePaymentService
                 ->lockForUpdate()
                 ->findOrFail($invoice->id);
 
+            $this->companyGuard->assertSameCompany(
+                [$invoice, $invoice->order],
+                'Invoice and order must belong to the same company.'
+            );
+
             $totalPaid = (float) $invoice->payments->sum('amount');
 
             if (($totalPaid + $amount) > (float) $invoice->total) {
@@ -32,6 +38,7 @@ class InvoicePaymentService
             }
 
             $payment = Payment::create([
+                'company_id' => $invoice->company_id,
                 'invoice_id' => $invoice->id,
                 'amount' => $amount,
                 'payment_method' => $paymentMethod,
@@ -58,6 +65,13 @@ class InvoicePaymentService
 
     public function syncInvoiceStatus(Invoice $invoice): Invoice
     {
+        $invoice->loadMissing('order');
+
+        $this->companyGuard->assertSameCompany(
+            [$invoice, $invoice->order],
+            'Invoice and order must belong to the same company.'
+        );
+
         $paid = (float) $invoice->payments()->sum('amount');
         $total = (float) $invoice->total;
 

@@ -16,7 +16,7 @@ use App\Http\Controllers\Api\V1\FinanceApiController;
 Route::prefix('v1')->group(function () {
 
     Route::post('/login', [AuthController::class, 'login']);
-    Route::middleware(['auth:sanctum', 'allowed.admin'])->group(function () {
+    Route::middleware(['auth:sanctum', 'permission:api.access'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
 
         // PRODUCTS
@@ -72,19 +72,26 @@ Route::prefix('v1')->group(function () {
         });
 
 
-        Route::controller(PaymentApiController::class)->group(function () {
+        Route::controller(PaymentApiController::class)->middleware('permission:payments.record')->group(function () {
             Route::post('/invoices/{invoice}/payments', 'store');
         });
 
+        Route::middleware('permission:finance.view')->group(function () {
+            Route::get('/finance/overview', [FinanceApiController::class, 'overview']);
+            Route::get('/finance/journal-entries', [FinanceApiController::class, 'journalEntries']);
+            Route::get('/finance/trial-balance', [FinanceApiController::class, 'trialBalance']);
+            Route::get('/finance/profit-and-loss', [FinanceApiController::class, 'profitAndLoss']);
+            Route::get('/finance/balance-sheet', [FinanceApiController::class, 'balanceSheet']);
+            Route::get('/finance/vat-summary', [FinanceApiController::class, 'vatSummary']);
+        });
 
-        Route::get('/finance/overview', [FinanceApiController::class, 'overview']);
-        Route::get('/finance/journal-entries', [FinanceApiController::class, 'journalEntries']);
-        Route::get('/finance/trial-balance', [FinanceApiController::class, 'trialBalance']);
-        Route::get('/finance/profit-and-loss', [FinanceApiController::class, 'profitAndLoss']);
-        Route::get('/finance/balance-sheet', [FinanceApiController::class, 'balanceSheet']);
-        Route::get('/finance/vat-summary', [FinanceApiController::class, 'vatSummary']);
-        Route::get('/finance/accounts', [FinanceApiController::class, 'accounts']);
-        Route::post('/finance/accounts', [FinanceApiController::class, 'storeAccount']);
-        Route::put('/finance/accounts/{account}', [FinanceApiController::class, 'updateAccount']);
+        Route::middleware('permission:accounts.view')->group(function () {
+            Route::get('/finance/accounts', [FinanceApiController::class, 'accounts']);
+        });
+
+        Route::middleware('permission:accounts.manage')->group(function () {
+            Route::post('/finance/accounts', [FinanceApiController::class, 'storeAccount']);
+            Route::put('/finance/accounts/{account}', [FinanceApiController::class, 'updateAccount']);
+        });
     });
 });

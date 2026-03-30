@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use App\Services\CustomerQueryService;
+use App\Services\CompanyContext;
 
 class CustomerController extends Controller
 {
@@ -30,8 +31,10 @@ class CustomerController extends Controller
     public function search(Request $request)
     {
         $query = trim((string) $request->input('q', ''));
+        $companyId = app(CompanyContext::class)->id();
 
         return Customer::query()
+            ->where('company_id', $companyId)
             ->select('id', 'name', 'type')
             ->when($query !== '', function ($builder) use ($query) {
                 $normalizedQuery = mb_strtolower($query);
@@ -57,7 +60,9 @@ class CustomerController extends Controller
             'credit_limit' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $customer = Customer::create($validated);
+        $customer = Customer::create($validated + [
+            'company_id' => app(CompanyContext::class)->id(),
+        ]);
 
         return redirect()
             ->route('customers.show', $customer)

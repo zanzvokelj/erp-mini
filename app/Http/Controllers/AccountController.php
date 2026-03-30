@@ -14,6 +14,8 @@ class AccountController extends Controller
 
     public function index()
     {
+        $this->authorize('viewAny', Account::class);
+
         $accounts = Account::query()
             ->withCount('journalLines')
             ->orderBy('code')
@@ -26,6 +28,8 @@ class AccountController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Account::class);
+
         return view('finance.accounts-create', [
             'types' => Account::TYPES,
             'categories' => Account::CATEGORIES,
@@ -34,6 +38,8 @@ class AccountController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', Account::class);
+
         $validated = $request->validate(
             $this->accountService->validationRules()
         );
@@ -50,6 +56,8 @@ class AccountController extends Controller
 
     public function edit(Account $account)
     {
+        $this->authorize('view', $account);
+
         return view('finance.accounts-edit', [
             'account' => $account,
             'types' => Account::TYPES,
@@ -59,6 +67,8 @@ class AccountController extends Controller
 
     public function update(Request $request, Account $account)
     {
+        $this->authorize('update', $account);
+
         $validated = $request->validate(
             $this->accountService->validationRules($account->id)
         );
@@ -76,6 +86,8 @@ class AccountController extends Controller
 
     public function toggle(Account $account)
     {
+        $this->authorize('toggle', $account);
+
         $this->accountService->toggle($account);
 
         return back()->with('success', 'Account status updated.');

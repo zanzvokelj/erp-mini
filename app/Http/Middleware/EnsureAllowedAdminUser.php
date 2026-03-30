@@ -11,8 +11,11 @@ class EnsureAllowedAdminUser
     {
         $user = $request->user();
 
+        $isAuthorized = $request->expectsJson()
+            ? $user?->canAccessApi()
+            : $user?->canAccessApp();
 
-        if (! $user || ! $user->hasAllowedAdminAccess()) {
+        if (! $user || ! $isAuthorized) {
 
             // API request
             if ($request->expectsJson()) {

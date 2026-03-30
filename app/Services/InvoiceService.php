@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
 class InvoiceService
 {
     public function __construct(
-        protected AccountingService $accountingService
+        protected AccountingService $accountingService,
+        protected CompanyGuard $companyGuard
     ) {}
 
     public function generateFromOrder(Order $order, float $taxRate = 0): Invoice
@@ -19,11 +20,17 @@ class InvoiceService
 
             $order->load('items.product', 'customer');
 
+            $this->companyGuard->assertSameCompany(
+                [$order, $order->customer, ...$order->items->pluck('product')->all()],
+                'Invoice can only be generated from same-company order data.'
+            );
+
             $subtotal = round((float) $order->subtotal, 2);
             $tax = round($subtotal * ($taxRate / 100), 2);
             $total = round($subtotal + $tax, 2);
 
             $invoice = Invoice::create([
+                'company_id' => $order->company_id,
                 'invoice_number' => 'INV-' . uniqid(),
                 'order_id' => $order->id,
                 'customer_id' => $order->customer_id,

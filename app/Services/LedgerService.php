@@ -6,13 +6,16 @@ use App\Accounting\AccountingEntryTypes;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class LedgerService
 {
     public function __construct(
-        protected AccountingPeriodService $accountingPeriodService
+        protected AccountingPeriodService $accountingPeriodService,
+        protected CompanyGuard $companyGuard,
+        protected CompanyContext $companyContext
     ) {
     }
 
@@ -43,10 +46,14 @@ class LedgerService
                 return $existing->load(['lines.account', 'reversalEntry']);
             }
 
+            $referenceModel = $this->resolveReferenceModel($referenceType, $referenceId);
+            $companyId = $this->resolveCompanyId($referenceModel);
+
             $postingDate = Carbon::parse($postedAt);
             $this->accountingPeriodService->assertPostingAllowed($postingDate);
 
             $entry = JournalEntry::create([
+                'company_id' => $companyId,
                 'entry_number' => $this->generateEntryNumber(),
                 'entry_type' => $entryType,
                 'reference_type' => $referenceType,
@@ -61,12 +68,19 @@ class LedgerService
             $totalCredit = 0;
 
             foreach ($lines as $line) {
-                $account = $this->findAccount($line['account_code']);
+                $account = $this->findAccount($line['account_code'], $companyId);
+
+                $this->companyGuard->assertCompanyId(
+                    $companyId,
+                    [$entry, $account, $referenceModel],
+                    'Ledger entities must belong to the same company.'
+                );
 
                 $debit = round((float) $line['debit'], 2);
                 $credit = round((float) $line['credit'], 2);
 
                 $entry->lines()->create([
+                    'company_id' => $companyId,
                     'account_id' => $account->id,
                     'debit' => $debit,
                     'credit' => $credit,
@@ -88,6 +102,12 @@ class LedgerService
     public function reverse(JournalEntry $entry, ?User $user = null, $postedAt = null): JournalEntry
     {
         $entry->loadMissing(['lines.account', 'reversalEntry']);
+
+        $this->companyGuard->assertCompanyId(
+            $this->resolveCompanyId($entry),
+            [$entry, $user],
+            'Journal entry reversal must stay within the same company.'
+        );
 
         if ($entry->reversal_of_journal_entry_id) {
             throw new \RuntimeException('Reversal entries cannot be reversed again.');
@@ -123,11 +143,38 @@ class LedgerService
         return $reversal;
     }
 
-    protected function findAccount(string $code): Account
+    protected function findAccount(string $code, int $companyId): Account
     {
         return Account::where('code', $code)
+            ->where('company_id', $companyId)
             ->where('is_active', true)
             ->firstOrFail();
+    }
+
+    protected function resolveReferenceModel(string $referenceType, int $referenceId): ?Model
+    {
+        if (! class_exists($referenceType)) {
+            return null;
+        }
+
+        $reference = new $referenceType();
+
+        if (! $reference instanceof Model) {
+            return null;
+        }
+
+        return $reference->newQuery()->find($referenceId);
+    }
+
+    protected function resolveCompanyId(?Model $model): int
+    {
+        $companyId = $model?->company_id;
+
+        if ($companyId) {
+            return (int) $companyId;
+        }
+
+        return $this->companyContext->id();
     }
 
     protected function generateEntryNumber(): string

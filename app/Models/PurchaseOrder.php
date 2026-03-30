@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseOrder extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
+        'company_id',
         'po_number',
         'supplier_id',
         'warehouse_id',

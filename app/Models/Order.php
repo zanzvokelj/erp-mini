@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,8 +15,9 @@ use App\Models\Invoice;
 class Order extends Model
 {
 
-    use HasFactory;
+    use BelongsToCompany, HasFactory;
     protected $fillable = [
+        'company_id',
         'order_number',
         'customer_id',
         'warehouse_id',
@@ -28,7 +30,7 @@ class Order extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 
     public function items(): HasMany

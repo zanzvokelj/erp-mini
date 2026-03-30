@@ -27,7 +27,7 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        if (! $request->user()?->hasAllowedAdminAccess()) {
+        if (! $request->user()?->canAccessApp()) {
             Auth::guard('web')->logout();
 
             throw ValidationException::withMessages([

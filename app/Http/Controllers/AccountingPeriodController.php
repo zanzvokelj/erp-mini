@@ -15,6 +15,8 @@ class AccountingPeriodController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', AccountingPeriod::class);
+
         $year = $request->integer('year', (int) now()->year);
 
         $this->accountingPeriodService->ensureYearExists($year);
@@ -33,6 +35,8 @@ class AccountingPeriodController extends Controller
 
     public function close(AccountingPeriod $period, Request $request)
     {
+        $this->authorize('close', $period);
+
         $this->accountingPeriodService->close(
             $period,
             $request->user()?->id
@@ -43,6 +47,8 @@ class AccountingPeriodController extends Controller
 
     public function reopen(AccountingPeriod $period)
     {
+        $this->authorize('reopen', $period);
+
         $this->accountingPeriodService->reopen($period);
 
         return back()->with('success', "Period {$period->name} reopened.");

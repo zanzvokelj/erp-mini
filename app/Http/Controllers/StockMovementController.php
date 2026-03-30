@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -10,6 +11,7 @@ class StockMovementController extends Controller
     public function index()
     {
         $query = DB::table('stock_movements')
+            ->where('stock_movements.company_id', app(CompanyContext::class)->id())
             ->join('products','stock_movements.product_id','=','products.id')
             ->leftJoin('warehouses','stock_movements.warehouse_id','=','warehouses.id')
             ->select(

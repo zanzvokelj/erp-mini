@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\OrderItem;
 use App\Models\Warehouse;
+use App\Services\CompanyContext;
 
 class OrderController extends Controller
 {
@@ -18,7 +19,10 @@ class OrderController extends Controller
 
     public function index()
     {
-        $query = Order::with(['customer','warehouse']);
+        $this->authorize('viewAny', Order::class);
+
+        $query = Order::with(['customer','warehouse'])
+            ->where('company_id', app(CompanyContext::class)->id());
 
         /*
         SEARCH
@@ -49,12 +53,16 @@ class OrderController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $customers = \App\Models\Customer::all();
+        $customers = \App\Models\Customer::query()
+            ->where('company_id', app(CompanyContext::class)->id())
+            ->get();
 
         return view('orders.index', compact('orders','customers'));
     }
     public function store(Request $request)
     {
+        $this->authorize('create', Order::class);
+
         $request->validate([
             'customer_id' => ['required','exists:customers,id'],
             'warehouse_id' => ['required','exists:warehouses,id']
@@ -70,6 +78,8 @@ class OrderController extends Controller
 
     public function confirm(Order $order)
     {
+        $this->authorize('confirm', $order);
+
         $this->orderService->confirmOrder($order);
 
         return redirect()->back()
@@ -78,6 +88,8 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
+        $this->authorize('view', $order);
+
         $order->load('customer', 'warehouse', 'items.product', 'activities');
 
         return view('orders.show', compact('order'));
@@ -86,13 +98,20 @@ class OrderController extends Controller
 
     public function create()
     {
-        $warehouses = Warehouse::orderBy('name')->get();
+        $this->authorize('create', Order::class);
+
+        $warehouses = Warehouse::query()
+            ->where('company_id', app(CompanyContext::class)->id())
+            ->orderBy('name')
+            ->get();
 
         return view('orders.create', compact('warehouses'));
     }
 
     public function addItem(Request $request, Order $order)
     {
+        $this->authorize('update', $order);
+
         $validated = $request->validate([
             'product_id' => ['required','exists:products,id'],
             'quantity' => ['required','integer','min:1']
@@ -115,6 +134,8 @@ class OrderController extends Controller
 
     public function ship(Order $order)
     {
+        $this->authorize('ship', $order);
+
         try {
 
             $this->orderService->shipOrder($order);
@@ -130,6 +151,8 @@ class OrderController extends Controller
 
     public function complete(Order $order)
     {
+        $this->authorize('complete', $order);
+
         try {
             $this->orderService->completeOrder($order);
 
@@ -142,6 +165,8 @@ class OrderController extends Controller
 
     public function updateItem(Request $request, OrderItem $item)
     {
+        $this->authorize('update', $item->order);
+
         $validated = $request->validate([
             'quantity' => ['required','integer','min:1']
         ]);
@@ -157,6 +182,8 @@ class OrderController extends Controller
 
     public function removeItem(OrderItem $item)
     {
+        $this->authorize('update', $item->order);
+
         try {
             $this->orderService->removeItem($item);
 
@@ -168,6 +195,8 @@ class OrderController extends Controller
 
     public function cancel(Order $order)
     {
+        $this->authorize('cancel', $order);
+
         try {
             $this->orderService->cancelOrder($order);
 
@@ -179,6 +208,8 @@ class OrderController extends Controller
 
     public function returnOrder(Order $order)
     {
+        $this->authorize('returnOrder', $order);
+
         try {
 
             $this->orderService->returnOrder($order);
@@ -194,7 +225,11 @@ class OrderController extends Controller
 
     public function export()
     {
-        $orders = \App\Models\Order::with('customer')->get();
+        $this->authorize('viewAny', Order::class);
+
+        $orders = \App\Models\Order::with('customer')
+            ->where('company_id', app(CompanyContext::class)->id())
+            ->get();
 
         $filename = 'orders.csv';
 

@@ -1,12 +1,19 @@
 <?php
 
 namespace App\Services;
+
 use App\Jobs\LowStockAlertJob;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\Warehouse;
 
 class ProductService
 {
+    public function __construct(
+        protected CompanyGuard $companyGuard
+    ) {
+    }
+
     public function calculateCurrentStock(Product $product): int
     {
         $stock = StockMovement::where('product_id', $product->id)
@@ -50,8 +57,18 @@ class ProductService
         ?int $referenceId = null,
         ?int $userId = null
     ): StockMovement {
+        $warehouse = null;
+
+        if ($warehouseId !== null) {
+            $warehouse = Warehouse::query()->findOrFail($warehouseId);
+            $this->companyGuard->assertSameCompany(
+                [$product, $warehouse],
+                'Product and warehouse must belong to the same company.'
+            );
+        }
 
         $movement = StockMovement::create([
+            'company_id' => $product->company_id,
             'product_id' => $product->id,
             'warehouse_id' => $warehouseId,
             'type' => $type,

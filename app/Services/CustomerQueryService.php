@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Services\Concerns\ScopesCurrentCompany;
 use Illuminate\Support\Facades\DB;
 
 class CustomerQueryService
 {
+    use ScopesCurrentCompany;
+
     public function getCustomers(array $filters)
     {
-        $query = DB::table('customers');
+        $query = $this->scopeCompany(DB::table('customers'), 'customers');
 
         // SEARCH
         if (!empty($filters['search'])) {
@@ -28,15 +31,17 @@ class CustomerQueryService
 
     public function getCustomerWithStats(int $id)
     {
-        $customer = DB::table('customers')->find($id);
+        $customer = $this->scopeCompany(DB::table('customers'), 'customers')
+            ->where('id', $id)
+            ->first();
 
-        $orders = DB::table('orders')
+        $orders = $this->scopeCompany(DB::table('orders'), 'orders')
             ->where('customer_id', $id)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
 
-        $stats = DB::table('orders')
+        $stats = $this->scopeCompany(DB::table('orders'), 'orders')
             ->where('customer_id', $id)
             ->selectRaw("
                 COUNT(*) as total_orders,

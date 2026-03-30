@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -9,7 +10,8 @@ class SupplierController extends Controller
 {
     public function index()
     {
-        $query = DB::table('suppliers');
+        $query = DB::table('suppliers')
+            ->where('company_id', app(CompanyContext::class)->id());
 
         /*
         SEARCH

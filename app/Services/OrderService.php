@@ -13,30 +13,43 @@ use App\Models\OrderActivity;
 use App\Services\InventoryService;
 use App\Events\OrderShipped;
 use App\Models\StockReservation;
+use App\Models\Customer;
+use App\Models\Warehouse;
 
 class OrderService
 {
     protected ProductService $productService;
     protected InventoryService $inventoryService;
     protected AccountingService $accountingService;
+    protected CompanyGuard $companyGuard;
 
     public function __construct(
         ProductService $productService,
         InventoryService $inventoryService,
-        AccountingService $accountingService
+        AccountingService $accountingService,
+        CompanyGuard $companyGuard
     ) {
         $this->productService = $productService;
         $this->inventoryService = $inventoryService;
         $this->accountingService = $accountingService;
+        $this->companyGuard = $companyGuard;
     }
 
     public function createDraftOrder(int $customerId, int $warehouseId): Order
     {
         return DB::transaction(function () use ($customerId, $warehouseId) {
+            $customer = Customer::query()->findOrFail($customerId);
+            $warehouse = Warehouse::query()->findOrFail($warehouseId);
+
+            $this->companyGuard->assertSameCompany(
+                [$customer, $warehouse],
+                'Customer and warehouse must belong to the same company.'
+            );
 
             $orderNumber = $this->generateOrderNumber();
 
             $order = Order::create([
+                'company_id' => $customer->company_id,
                 'order_number' => $orderNumber,
                 'customer_id' => $customerId,
                 'warehouse_id' => $warehouseId,
@@ -52,11 +65,20 @@ class OrderService
     public function addItem(Order $order, Product $product, int $quantity): OrderItem
     {
         return DB::transaction(function () use ($order, $product, $quantity) {
+            $order = Order::query()
+                ->with(['customer', 'warehouse'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
 
             // lock product row
             $product = Product::where('id', $product->id)
                 ->lockForUpdate()
                 ->first();
+
+            $this->companyGuard->assertSameCompany(
+                [$order, $order->customer, $order->warehouse, $product],
+                'Order, customer, warehouse and product must belong to the same company.'
+            );
 
             $available = $this->inventoryService
                 ->availableStock($product, $order->warehouse_id);
@@ -208,9 +230,10 @@ class OrderService
         }
 
         DB::transaction(function () use ($order) {
-
-
-            $order->load('items');
+            $order = Order::query()
+                ->with(['customer', 'warehouse', 'items.product'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
 
             // 1️⃣ collect product ids
             $productIds = $order->items->pluck('product_id');
@@ -220,6 +243,11 @@ class OrderService
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
+
+            $this->companyGuard->assertSameCompany(
+                [$order, $order->customer, $order->warehouse, ...$products->all()],
+                'Order entities must belong to the same company.'
+            );
 
             foreach ($order->items as $item) {
 
@@ -331,10 +359,16 @@ class OrderService
         }
 
         DB::transaction(function () use ($order) {
-
-            $order->load('items.product');
+            $order = Order::query()
+                ->with(['items.product', 'warehouse'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
 
             foreach ($order->items as $item) {
+                $this->companyGuard->assertSameCompany(
+                    [$order, $order->warehouse, $item->product],
+                    'Order, warehouse and product must belong to the same company.'
+                );
 
                 $this->productService->adjustStock(
                     $item->product,
@@ -380,10 +414,16 @@ class OrderService
         }
 
         DB::transaction(function () use ($order) {
-
-            $order->load('items.product');
+            $order = Order::query()
+                ->with(['items.product', 'warehouse'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
 
             foreach ($order->items as $item) {
+                $this->companyGuard->assertSameCompany(
+                    [$order, $order->warehouse, $item->product],
+                    'Order, warehouse and product must belong to the same company.'
+                );
 
                 $this->productService->adjustStock(
                     $item->product,
