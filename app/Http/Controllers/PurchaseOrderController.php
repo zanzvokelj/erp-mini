@@ -7,6 +7,7 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Services\PurchaseOrderService;
 use App\Models\Warehouse;
+use App\Services\CompanyContext;
 
 class PurchaseOrderController extends Controller
 {
@@ -20,6 +21,7 @@ class PurchaseOrderController extends Controller
     public function index()
     {
         $purchaseOrders = PurchaseOrder::with(['supplier','warehouse'])
+            ->where('company_id', app(CompanyContext::class)->id())
             ->latest()
             ->paginate(20);
 
@@ -28,8 +30,9 @@ class PurchaseOrderController extends Controller
 
     public function create()
     {
-        $suppliers = Supplier::orderBy('name')->get();
-        $warehouses = Warehouse::orderBy('name')->get();
+        $companyId = app(CompanyContext::class)->id();
+        $suppliers = Supplier::query()->where('company_id', $companyId)->orderBy('name')->get();
+        $warehouses = Warehouse::query()->where('company_id', $companyId)->orderBy('name')->get();
 
         return view('purchase-orders.create', compact('suppliers','warehouses'));
     }
@@ -52,9 +55,17 @@ class PurchaseOrderController extends Controller
 
     public function show(PurchaseOrder $po)
     {
+        abort_if(
+            (int) $po->company_id !== app(CompanyContext::class)->id(),
+            404
+        );
+
         $po->load('supplier','items.product','payments');
 
-        $products = \App\Models\Product::orderBy('name')->get();
+        $products = \App\Models\Product::query()
+            ->where('company_id', app(CompanyContext::class)->id())
+            ->orderBy('name')
+            ->get();
 
         return view('purchase-orders.show', compact('po','products'));
     }

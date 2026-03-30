@@ -132,7 +132,7 @@
                         </td>
 
                         <td class="px-6 py-3">
-                            {{ $order->customer->name }}
+                            {{ $order->customer->name ?? '-' }}
                         </td>
 
                         <td class="px-6 py-3">

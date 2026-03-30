@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Warehouse;
+use App\Services\CompanyContext;
 use App\Services\InventoryQueryService;
 
 class InventoryController extends Controller
 {
     public function index(InventoryQueryService $inventoryQuery)
     {
-        $warehouses = Warehouse::orderBy('name')->get();
+        $warehouses = Warehouse::query()
+            ->where('company_id', app(CompanyContext::class)->id())
+            ->orderBy('name')
+            ->get();
 
         $inventory = $inventoryQuery->getInventory(request()->all());
 

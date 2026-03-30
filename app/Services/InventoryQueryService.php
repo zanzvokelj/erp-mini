@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Services\Concerns\ScopesCurrentCompany;
 use Illuminate\Support\Facades\DB;
 
 class InventoryQueryService
 {
+    use ScopesCurrentCompany;
+
     public function overviewQuery(?int $warehouseId = null)
     {
         $stockExpr = "
@@ -18,13 +21,15 @@ class InventoryQueryService
             ),0)
         ";
 
-        return DB::table('products')
+        return $this->scopeCompany(DB::table('products'), 'products')
             ->leftJoin('stock_movements', function ($join) use ($warehouseId) {
                 $join->on('products.id', '=', 'stock_movements.product_id');
 
                 if ($warehouseId) {
                     $join->where('stock_movements.warehouse_id', $warehouseId);
                 }
+
+                $join->where('stock_movements.company_id', $this->companyId());
             })
             ->select(
                 'products.id',

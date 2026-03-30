@@ -12,6 +12,7 @@ use App\Services\ProfitAndLossService;
 use App\Services\TrialBalanceService;
 use App\Services\VatSummaryService;
 use Illuminate\Http\Request;
+use App\Services\CompanyContext;
 
 class FinanceApiController extends Controller
 {
@@ -26,11 +27,15 @@ class FinanceApiController extends Controller
 
     public function overview(Request $request)
     {
+        $companyId = app(CompanyContext::class)->id();
+
         // 💰 TOTAL REVENUE
-        $revenue = Invoice::where('status', 'paid')
+        $revenue = Invoice::where('company_id', $companyId)
+            ->where('status', 'paid')
             ->sum('total');
 
         $openInvoices = Invoice::query()
+            ->where('company_id', $companyId)
             ->withSum('payments', 'amount')
             ->whereNotIn('status', ['paid', 'cancelled']);
 
@@ -55,7 +60,8 @@ class FinanceApiController extends Controller
             });
 
         // 📈 THIS MONTH
-        $thisMonth = Invoice::where('status', 'paid')
+        $thisMonth = Invoice::where('company_id', $companyId)
+            ->where('status', 'paid')
             ->whereMonth('paid_at', now()->month)
             ->whereYear('paid_at', now()->year)
             ->sum('total');
@@ -64,6 +70,7 @@ class FinanceApiController extends Controller
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
 
         $overdueInvoices = Invoice::with('customer')
+            ->where('company_id', $companyId)
             ->withSum('payments', 'amount')
             ->whereNotIn('status', ['paid','cancelled'])
             ->whereNotNull('due_date')
@@ -105,6 +112,7 @@ class FinanceApiController extends Controller
     public function journalEntries(Request $request)
     {
         $entries = JournalEntry::with(['lines.account'])
+            ->where('company_id', app(CompanyContext::class)->id())
             ->when($request->filled('entry_type'), function ($query) use ($request) {
                 $query->where('entry_type', $request->string('entry_type'));
             })
@@ -158,6 +166,7 @@ class FinanceApiController extends Controller
     {
         return response()->json(
             Account::query()
+                ->where('company_id', app(CompanyContext::class)->id())
                 ->withCount('journalLines')
                 ->orderBy('code')
                 ->paginate($request->integer('per_page', 50))

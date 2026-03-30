@@ -2,15 +2,18 @@
 
 namespace App\Services;
 
+use App\Services\Concerns\ScopesCurrentCompany;
 use Illuminate\Support\Facades\DB;
 
 class ProductQueryService
 {
+    use ScopesCurrentCompany;
+
     public function getProducts(array $filters)
     {
         $warehouseId = $filters['warehouse'] ?? null;
 
-        $query = DB::table('products')
+        $query = $this->scopeCompany(DB::table('products'), 'products')
             ->leftJoin('suppliers', 'products.supplier_id', '=', 'suppliers.id')
             ->leftJoin('stock_movements', function ($join) use ($warehouseId) {
                 $join->on('products.id', '=', 'stock_movements.product_id');
@@ -18,6 +21,8 @@ class ProductQueryService
                 if ($warehouseId) {
                     $join->where('stock_movements.warehouse_id', $warehouseId);
                 }
+
+                $join->where('stock_movements.company_id', $this->companyId());
             })
             ->select(
                 'products.id',

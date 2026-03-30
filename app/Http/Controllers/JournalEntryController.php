@@ -15,6 +15,8 @@ class JournalEntryController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', JournalEntry::class);
+
         $entryTypes = JournalEntry::query()
             ->select('entry_type')
             ->distinct()
@@ -54,6 +56,8 @@ class JournalEntryController extends Controller
 
     public function reverse(Request $request, JournalEntry $entry)
     {
+        $this->authorize('reverse', $entry);
+
         try {
             $this->ledgerService->reverse($entry, $request->user());
 

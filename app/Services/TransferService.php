@@ -3,16 +3,19 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\Warehouse;
 use App\Models\WarehouseTransfer;
 use Illuminate\Support\Facades\DB;
 
 class TransferService
 {
     protected ProductService $productService;
+    protected CompanyGuard $companyGuard;
 
-    public function __construct(ProductService $productService)
+    public function __construct(ProductService $productService, CompanyGuard $companyGuard)
     {
         $this->productService = $productService;
+        $this->companyGuard = $companyGuard;
     }
 
     public function transfer(
@@ -27,11 +30,18 @@ class TransferService
         }
 
         return DB::transaction(function () use ($product, $fromWarehouse, $toWarehouse, $quantity) {
+            $fromWarehouseModel = Warehouse::query()->findOrFail($fromWarehouse);
+            $toWarehouseModel = Warehouse::query()->findOrFail($toWarehouse);
 
             // 🔒 LOCK PRODUCT
             $product = Product::where('id', $product->id)
                 ->lockForUpdate()
                 ->first();
+
+            $this->companyGuard->assertSameCompany(
+                [$product, $fromWarehouseModel, $toWarehouseModel],
+                'Transfer entities must belong to the same company.'
+            );
 
             // ✅ AVAILABLE (correct logic)
             $available = app(\App\Services\InventoryService::class)

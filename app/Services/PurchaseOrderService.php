@@ -6,6 +6,8 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\SupplierPayment;
+use App\Models\Supplier;
+use App\Models\Warehouse;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -13,13 +15,16 @@ class PurchaseOrderService
 {
     protected ProductService $productService;
     protected AccountingService $accountingService;
+    protected CompanyGuard $companyGuard;
 
     public function __construct(
         ProductService $productService,
-        AccountingService $accountingService
+        AccountingService $accountingService,
+        CompanyGuard $companyGuard
     ) {
         $this->productService = $productService;
         $this->accountingService = $accountingService;
+        $this->companyGuard = $companyGuard;
     }
 
     public function createDraft(
@@ -28,7 +33,18 @@ class PurchaseOrderService
         float $taxRate = 0,
         ?string $poNumber = null
     ): PurchaseOrder {
+        $supplier = Supplier::query()->findOrFail($supplierId);
+        $warehouse = $warehouseId !== null
+            ? Warehouse::query()->findOrFail($warehouseId)
+            : null;
+
+        $this->companyGuard->assertSameCompany(
+            [$supplier, $warehouse],
+            'Supplier and warehouse must belong to the same company.'
+        );
+
         return PurchaseOrder::create([
+            'company_id' => $supplier->company_id,
             'po_number' => $poNumber ?? ('PO-' . now()->timestamp),
             'supplier_id' => $supplierId,
             'warehouse_id' => $warehouseId,
@@ -68,6 +84,14 @@ class PurchaseOrderService
         if ($po->status !== 'draft') {
             throw new \Exception('Items can only be added to draft purchase orders.');
         }
+
+        $product = Product::query()->findOrFail($productId);
+        $po->loadMissing(['supplier', 'warehouse']);
+
+        $this->companyGuard->assertSameCompany(
+            [$po, $po->supplier, $po->warehouse, $product],
+            'Purchase order entities must belong to the same company.'
+        );
 
         $item = $po->items()->create([
             'product_id' => $productId,
@@ -117,10 +141,16 @@ class PurchaseOrderService
         }
 
         DB::transaction(function () use ($po) {
-
-            $po->load('items.product');
+            $po = PurchaseOrder::query()
+                ->with(['items.product', 'warehouse', 'supplier'])
+                ->lockForUpdate()
+                ->findOrFail($po->id);
 
             foreach ($po->items as $item) {
+                $this->companyGuard->assertSameCompany(
+                    [$po, $po->supplier, $po->warehouse, $item->product],
+                    'Purchase order entities must belong to the same company.'
+                );
 
                 $this->productService->adjustStock(
                     $item->product,
@@ -160,6 +190,7 @@ class PurchaseOrderService
         }
 
         $payment = SupplierPayment::create([
+            'company_id' => $po->company_id,
             'purchase_order_id' => $po->id,
             'amount' => $amount,
             'payment_method' => $paymentMethod,

@@ -11,6 +11,7 @@ use App\Models\Warehouse;
 use App\Models\StockMovement;
 use App\Models\StockReservation;
 use Illuminate\Support\Collection;
+use App\Services\CompanyContext;
 
 class ProductController extends Controller
 {
@@ -18,20 +19,29 @@ class ProductController extends Controller
     {
         $products = $productQuery->getProducts(request()->all());
 
-        $suppliers = \DB::table('suppliers')->get();
-        $warehouses = Warehouse::orderBy('name')->get();
+        $companyId = app(CompanyContext::class)->id();
+        $suppliers = \DB::table('suppliers')->where('company_id', $companyId)->get();
+        $warehouses = Warehouse::query()->where('company_id', $companyId)->orderBy('name')->get();
 
         return view('products.index', compact('products', 'suppliers', 'warehouses'));
     }
 
     public function store(StoreProductRequest $request)
     {
-        return Product::create($request->validated());
+        return Product::create($request->validated() + [
+            'company_id' => app(CompanyContext::class)->id(),
+        ]);
     }
 
     public function show(Product $product)
     {
+        abort_if(
+            (int) $product->company_id !== app(CompanyContext::class)->id(),
+            404
+        );
+
         $movements = $product->stockMovements()
+            ->where('company_id', app(CompanyContext::class)->id())
             ->with('warehouse')
             ->latest()
             ->limit(50)
@@ -57,9 +67,11 @@ class ProductController extends Controller
         $forecastService = new InventoryForecastService();
         $daysUntilOut = $forecastService->forecast($product);
 
-        $warehouses = Warehouse::orderBy('name')->get();
+        $companyId = app(CompanyContext::class)->id();
+        $warehouses = Warehouse::query()->where('company_id', $companyId)->orderBy('name')->get();
 
         $warehouseStock = StockMovement::where('product_id', $product->id)
+            ->where('company_id', $companyId)
             ->selectRaw("
                 warehouse_id,
                 SUM(
@@ -85,6 +97,11 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        abort_if(
+            (int) $product->company_id !== app(CompanyContext::class)->id(),
+            404
+        );
+
         $product->delete();
 
         return response()->json([
@@ -94,10 +111,12 @@ class ProductController extends Controller
 
     public function search(Request $request)
     {
+        $companyId = app(CompanyContext::class)->id();
         $query = $request->input('q');
         $warehouseId = $request->input('warehouse_id');
 
         $products = Product::query()
+            ->where('company_id', $companyId)
             ->when($query, function ($q) use ($query) {
                 $normalizedQuery = mb_strtolower(trim($query));
 
@@ -122,6 +141,7 @@ class ProductController extends Controller
         ";
 
         $activeReservations = StockReservation::query()
+            ->where('company_id', $companyId)
             ->whereIn('product_id', $productIds)
             ->where(function ($q) {
                 $q->whereNull('expires_at')
@@ -130,6 +150,7 @@ class ProductController extends Controller
 
         if ($warehouseId) {
             $stockByProduct = StockMovement::query()
+                ->where('company_id', $companyId)
                 ->whereIn('product_id', $productIds)
                 ->where('warehouse_id', $warehouseId)
                 ->selectRaw("product_id, COALESCE({$stockExpr}, 0) as stock")
@@ -166,6 +187,7 @@ class ProductController extends Controller
         }
 
         $stockByProduct = StockMovement::query()
+            ->where('company_id', $companyId)
             ->whereIn('product_id', $productIds)
             ->selectRaw("product_id, COALESCE({$stockExpr}, 0) as stock")
             ->groupBy('product_id')
@@ -176,7 +198,9 @@ class ProductController extends Controller
             ->groupBy('product_id')
             ->pluck('reserved', 'product_id');
 
-        $warehouses = Warehouse::orderByRaw("
+        $warehouses = Warehouse::query()
+            ->where('company_id', $companyId)
+            ->orderByRaw("
                 CASE
                     WHEN LOWER(name) = 'main' THEN 0
                     ELSE 1
@@ -186,6 +210,7 @@ class ProductController extends Controller
             ->get();
 
         $warehouseStocks = StockMovement::query()
+            ->where('company_id', $companyId)
             ->whereIn('product_id', $productIds)
             ->whereIn('warehouse_id', $warehouses->pluck('id'))
             ->selectRaw("product_id, warehouse_id, COALESCE({$stockExpr}, 0) as stock")

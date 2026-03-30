@@ -2,17 +2,21 @@
 
 namespace App\Services;
 
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\StockReservation;
 use App\Models\StockMovement;
+use App\Models\Warehouse;
 
 class InventoryService
 {
     protected ProductService $productService;
+    protected CompanyGuard $companyGuard;
 
-    public function __construct(ProductService $productService)
+    public function __construct(ProductService $productService, CompanyGuard $companyGuard)
     {
         $this->productService = $productService;
+        $this->companyGuard = $companyGuard;
     }
 
     public function reservedStock(Product $product): int
@@ -44,6 +48,14 @@ class InventoryService
 
     public function reserveStock(Product $product, int $orderId, int $quantity, int $warehouseId)
     {
+        $order = Order::query()->findOrFail($orderId);
+        $warehouse = Warehouse::query()->findOrFail($warehouseId);
+
+        $this->companyGuard->assertSameCompany(
+            [$product, $order, $warehouse],
+            'Reservation entities must belong to the same company.'
+        );
+
         $available = $this->availableStock($product, $warehouseId);
 
         if ($quantity > $available) {
@@ -51,6 +63,7 @@ class InventoryService
         }
 
         StockReservation::create([
+            'company_id' => $order->company_id,
             'product_id' => $product->id,
             'order_id' => $orderId,
             'warehouse_id' => $warehouseId, // 🔥 TO JE KLJUČNO
@@ -61,11 +74,26 @@ class InventoryService
 
     public function updateReservation(int $orderId, int $productId, int $quantity): void
     {
-        StockReservation::where('order_id', $orderId)
+        $reservation = StockReservation::query()
+            ->where('order_id', $orderId)
             ->where('product_id', $productId)
-            ->update([
-                'quantity' => $quantity
-            ]);
+            ->first();
+
+        if (! $reservation) {
+            return;
+        }
+
+        $order = Order::query()->findOrFail($orderId);
+        $product = Product::query()->findOrFail($productId);
+
+        $this->companyGuard->assertSameCompany(
+            [$reservation, $order, $product],
+            'Reservation entities must belong to the same company.'
+        );
+
+        $reservation->update([
+            'quantity' => $quantity,
+        ]);
     }
 
     public function releaseReservation(int $orderId): void

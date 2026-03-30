@@ -24,7 +24,7 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        if (! $user || ! $user->hasAllowedAdminAccess()) {
+        if (! $user || ! $user->canAccessApi()) {
             Auth::guard('web')->logout();
 
             throw ValidationException::withMessages([

@@ -3,17 +3,22 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Services\Concerns\ScopesCurrentCompany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class TrialBalanceService
 {
+    use ScopesCurrentCompany;
+
     public function build(?string $dateFrom = null, ?string $dateTo = null): array
     {
         $rows = Account::query()
+            ->where('accounts.company_id', $this->companyId())
             ->leftJoin('journal_lines', 'accounts.id', '=', 'journal_lines.account_id')
             ->leftJoin('journal_entries', function ($join) use ($dateFrom, $dateTo) {
                 $join->on('journal_entries.id', '=', 'journal_lines.journal_entry_id');
+                $join->whereColumn('journal_entries.company_id', 'accounts.company_id');
 
                 if ($dateFrom) {
                     $join->whereDate('journal_entries.posted_at', '>=', $dateFrom);

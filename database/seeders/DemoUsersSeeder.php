@@ -29,5 +29,6 @@ class DemoUsersSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
     }
 }
