@@ -17,7 +17,7 @@ class PerformanceTest extends TestCase
 
     public function test_can_handle_1000_orders()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product = Product::factory()->create();

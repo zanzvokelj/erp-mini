@@ -4,13 +4,13 @@ use App\Models\Customer;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
-test('allowlisted users can log in to the api and receive a token', function () {
-    User::factory()->create([
-        'email' => 'admin@admin.com',
+test('sales users can log in to the api because the role includes api access', function () {
+    User::factory()->sales()->create([
+        'email' => 'sales@example.com',
     ]);
 
     $response = $this->postJson('/api/v1/login', [
-        'email' => 'admin@admin.com',
+        'email' => 'sales@example.com',
         'password' => 'password',
     ]);
 
@@ -21,13 +21,13 @@ test('allowlisted users can log in to the api and receive a token', function () 
         ]);
 });
 
-test('non allowlisted users can not log in to the api', function () {
-    User::factory()->create([
-        'email' => 'user@example.com',
+test('warehouse users can not log in to the api because the role lacks api access', function () {
+    User::factory()->warehouse()->create([
+        'email' => 'warehouse@example.com',
     ]);
 
     $response = $this->postJson('/api/v1/login', [
-        'email' => 'user@example.com',
+        'email' => 'warehouse@example.com',
         'password' => 'password',
     ]);
 
@@ -40,10 +40,8 @@ test('protected api routes require authentication', function () {
         ->assertUnauthorized();
 });
 
-test('allowlisted sanctum users can access protected api routes', function () {
-    $user = User::factory()->create([
-        'email' => 'sadmin@sadmin.com',
-    ]);
+test('sales users can access protected api routes because the role includes api access', function () {
+    $user = $this->actingAsUser('sales');
 
     Customer::factory()->count(3)->create();
 
@@ -58,10 +56,8 @@ test('allowlisted sanctum users can access protected api routes', function () {
         ]);
 });
 
-test('non allowlisted sanctum users are forbidden from protected api routes', function () {
-    $user = User::factory()->create([
-        'email' => 'user@example.com',
-    ]);
+test('warehouse users are forbidden from protected api routes because the role lacks api access', function () {
+    $user = $this->actingAsUser('warehouse');
 
     Sanctum::actingAs($user);
 

@@ -9,7 +9,6 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
-use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\AccountingService;
 use Carbon\Carbon;
@@ -24,7 +23,7 @@ class VatSummaryTest extends TestCase
     public function test_vat_summary_api_returns_output_input_and_net_position()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         $this->postSampleVatEntries();
 
@@ -41,7 +40,7 @@ class VatSummaryTest extends TestCase
     public function test_vat_summary_api_respects_date_filter()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         $this->postSampleVatEntries();
 
@@ -56,11 +55,7 @@ class VatSummaryTest extends TestCase
     public function test_vat_summary_web_page_renders_report()
     {
         $this->seed(AccountingSeeder::class);
-
-        $user = User::factory()->create([
-            'email' => 'admin@admin.com',
-        ]);
-        $this->actingAs($user);
+        $this->actingAsUser('finance');
 
         $this->postSampleVatEntries();
 

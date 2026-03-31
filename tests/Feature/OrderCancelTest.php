@@ -20,7 +20,7 @@ class OrderCancelTest extends TestCase
 
     public function test_order_cancel_releases_reservation()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product = Product::factory()->create();

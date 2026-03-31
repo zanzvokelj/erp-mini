@@ -17,7 +17,7 @@ class ConcurrencyTest extends TestCase
 
     public function test_two_orders_cannot_oversell_stock()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product = Product::factory()->create();

@@ -26,7 +26,7 @@ class AccountingTest extends TestCase
     public function test_invoice_generation_creates_accounting_entry_as_side_effect()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('sales');
 
         $customer = Customer::factory()->create();
         $warehouse = Warehouse::factory()->create();
@@ -75,7 +75,7 @@ class AccountingTest extends TestCase
     public function test_invoice_generation_with_tax_records_output_vat()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('sales');
 
         $customer = Customer::factory()->create();
         $warehouse = Warehouse::factory()->create();
@@ -114,7 +114,7 @@ class AccountingTest extends TestCase
     public function test_payment_records_accounting_entry_as_side_effect()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         $customer = Customer::factory()->create();
         $warehouse = Warehouse::factory()->create();

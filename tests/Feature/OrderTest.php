@@ -21,7 +21,7 @@ class OrderTest extends TestCase
 
     public function test_order_confirmation_does_not_reduce_stock_but_reserves()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product = Product::factory()->create();
@@ -75,7 +75,7 @@ class OrderTest extends TestCase
 
     public function test_order_cannot_exceed_available_stock()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product = Product::factory()->create();
@@ -130,7 +130,7 @@ class OrderTest extends TestCase
     {
         $this->seed(AccountingSeeder::class);
 
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product = Product::factory()->create();
@@ -160,7 +160,7 @@ class OrderTest extends TestCase
 
     public function test_order_fails_if_one_item_invalid()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product1 = Product::factory()->create();
