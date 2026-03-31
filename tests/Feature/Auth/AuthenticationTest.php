@@ -8,13 +8,13 @@ test('login screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
-test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create([
-        'email' => 'admin@admin.com',
+test('warehouse users can authenticate using the login screen because the role includes app access', function () {
+    User::factory()->warehouse()->create([
+        'email' => 'warehouse@example.com',
     ]);
 
     $response = $this->post('/login', [
-        'email' => 'admin@admin.com',
+        'email' => 'warehouse@example.com',
         'password' => 'password',
     ]);
 
@@ -23,12 +23,12 @@ test('users can authenticate using the login screen', function () {
 });
 
 test('users can not authenticate with invalid password', function () {
-    $user = User::factory()->create([
-        'email' => 'admin@admin.com',
+    User::factory()->warehouse()->create([
+        'email' => 'warehouse@example.com',
     ]);
 
     $this->post('/login', [
-        'email' => 'admin@admin.com',
+        'email' => 'warehouse@example.com',
         'password' => 'wrong-password',
     ]);
 
@@ -36,8 +36,8 @@ test('users can not authenticate with invalid password', function () {
 });
 
 test('users can logout', function () {
-    $user = User::factory()->create([
-        'email' => 'admin@admin.com',
+    $user = User::factory()->warehouse()->create([
+        'email' => 'warehouse@example.com',
     ]);
 
     $response = $this->actingAs($user)->post('/logout');
@@ -46,10 +46,12 @@ test('users can logout', function () {
     $response->assertRedirect('/');
 });
 
-test('non allowlisted users can not authenticate using the login screen', function () {
-    $user = User::factory()->create([
+test('users without company access can not authenticate using the login screen even if their role has app access', function () {
+    $user = User::factory()->warehouse()->create([
         'email' => 'user@example.com',
     ]);
+
+    $user->update(['company_id' => null]);
 
     $response = $this->from('/login')->post('/login', [
         'email' => 'user@example.com',

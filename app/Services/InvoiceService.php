@@ -17,8 +17,9 @@ class InvoiceService
     public function generateFromOrder(Order $order, float $taxRate = 0): Invoice
     {
         $invoice = DB::transaction(function () use ($order, $taxRate) {
-
-            $order->load('items.product', 'customer');
+            $order = Order::query()
+                ->with(['items.product', 'customer'])
+                ->findOrFail($order->id);
 
             $this->companyGuard->assertSameCompany(
                 [$order, $order->customer, ...$order->items->pluck('product')->all()],

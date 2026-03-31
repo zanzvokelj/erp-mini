@@ -7,7 +7,6 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
-use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\AccountingService;
 use Database\Seeders\AccountingSeeder;
@@ -21,7 +20,7 @@ class AccountingPeriodTest extends TestCase
     public function test_posting_is_blocked_when_period_is_closed()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         AccountingPeriod::create([
             'name' => 'January 2026',
@@ -66,7 +65,7 @@ class AccountingPeriodTest extends TestCase
     public function test_posting_succeeds_when_period_is_open()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         AccountingPeriod::create([
             'name' => 'January 2026',
@@ -111,10 +110,7 @@ class AccountingPeriodTest extends TestCase
 
     public function test_accounting_periods_page_renders_and_can_generate_year()
     {
-        $user = User::factory()->create([
-            'email' => 'admin@admin.com',
-        ]);
-        $this->actingAs($user);
+        $this->actingAsUser('finance');
 
         $response = $this->get('/finance/periods?year=2026');
 
@@ -127,10 +123,7 @@ class AccountingPeriodTest extends TestCase
 
     public function test_accounting_period_can_be_closed_and_reopened_via_web_flow()
     {
-        $user = User::factory()->create([
-            'email' => 'admin@admin.com',
-        ]);
-        $this->actingAs($user);
+        $user = $this->actingAsUser('finance');
 
         $period = AccountingPeriod::create([
             'name' => 'March 2026',

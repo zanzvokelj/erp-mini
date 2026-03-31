@@ -10,7 +10,6 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
-use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\AccountingService;
 use Carbon\Carbon;
@@ -25,7 +24,7 @@ class ProfitAndLossTest extends TestCase
     public function test_profit_and_loss_api_returns_revenue_expense_and_profit()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         $this->postSampleEntries();
 
@@ -47,7 +46,7 @@ class ProfitAndLossTest extends TestCase
     public function test_profit_and_loss_api_respects_date_filter()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         $this->postSampleEntries();
 
@@ -63,11 +62,7 @@ class ProfitAndLossTest extends TestCase
     public function test_profit_and_loss_web_page_renders_report()
     {
         $this->seed(AccountingSeeder::class);
-
-        $user = User::factory()->create([
-            'email' => 'admin@admin.com',
-        ]);
-        $this->actingAs($user);
+        $this->actingAsUser('finance');
 
         $this->postSampleEntries();
 

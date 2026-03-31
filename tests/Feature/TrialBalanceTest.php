@@ -9,7 +9,6 @@ use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
-use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\AccountingService;
 use Database\Seeders\AccountingSeeder;
@@ -23,7 +22,7 @@ class TrialBalanceTest extends TestCase
     public function test_trial_balance_api_returns_account_totals()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         $this->postSampleEntries();
 
@@ -61,11 +60,7 @@ class TrialBalanceTest extends TestCase
     public function test_trial_balance_web_page_renders_account_balances()
     {
         $this->seed(AccountingSeeder::class);
-
-        $user = User::factory()->create([
-            'email' => 'admin@admin.com',
-        ]);
-        $this->actingAs($user);
+        $this->actingAsUser('finance');
 
         $this->postSampleEntries();
 

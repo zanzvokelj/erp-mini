@@ -17,7 +17,7 @@ class OrderEdgeCaseTest extends TestCase
 
     public function test_order_cannot_be_confirmed_without_items()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $customer = Customer::factory()->create();
@@ -36,7 +36,7 @@ class OrderEdgeCaseTest extends TestCase
 
     public function test_order_cannot_be_confirmed_twice()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $product = Product::factory()->create();
@@ -56,7 +56,7 @@ class OrderEdgeCaseTest extends TestCase
 
     public function test_shipped_order_cannot_be_cancelled()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->sales()->create();
         $this->actingAs($user);
 
         $customer = Customer::factory()->create();

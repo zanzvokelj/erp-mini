@@ -16,7 +16,7 @@ class JournalReversalTest extends TestCase
     public function test_journal_entry_can_be_reversed()
     {
         $this->seed(AccountingSeeder::class);
-        $this->actingAsAdmin();
+        $this->actingAsUser('finance');
 
         $original = JournalEntry::create([
             'entry_number' => 'JE-000001',
