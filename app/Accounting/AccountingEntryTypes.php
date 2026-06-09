@@ -9,5 +9,6 @@ class AccountingEntryTypes
     public const PURCHASE_ORDER_RECEIVED = 'purchase_order_received';
     public const SUPPLIER_PAYMENT = 'supplier_payment';
     public const COST_OF_GOODS_SOLD = 'cost_of_goods_sold';
+    public const OPENING_INVENTORY = 'opening_inventory';
     public const MANUAL_REVERSAL = 'manual_reversal';
 }
