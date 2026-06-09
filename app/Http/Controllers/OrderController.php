@@ -100,12 +100,17 @@ class OrderController extends Controller
     {
         $this->authorize('create', Order::class);
 
+        $customers = Customer::query()
+            ->where('company_id', app(CompanyContext::class)->id())
+            ->orderBy('name')
+            ->get(['id', 'name', 'type']);
+
         $warehouses = Warehouse::query()
             ->where('company_id', app(CompanyContext::class)->id())
             ->orderBy('name')
             ->get();
 
-        return view('orders.create', compact('warehouses'));
+        return view('orders.create', compact('customers', 'warehouses'));
     }
 
     public function addItem(Request $request, Order $order)

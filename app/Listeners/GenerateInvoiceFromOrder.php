@@ -34,7 +34,5 @@ class GenerateInvoiceFromOrder
             'invoice_created',
             "Invoice {$invoice->invoice_number} created"
         );
-
-        \Log::info('Invoice listener fired');
     }
 }

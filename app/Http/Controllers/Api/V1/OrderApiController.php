@@ -7,6 +7,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Services\CompanyContext;
 use App\Services\InvoiceService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
@@ -20,8 +21,11 @@ class OrderApiController extends Controller
 
     public function index()
     {
+        $this->authorize('viewAny', Order::class);
+
         return OrderResource::collection(
             Order::with(['customer','items.product'])
+                ->where('company_id', app(CompanyContext::class)->id())
                 ->latest()
                 ->paginate(20)
         );
@@ -29,6 +33,8 @@ class OrderApiController extends Controller
 
     public function show(Order $order)
     {
+        $this->authorize('view', $order);
+
         $order->load([
             'customer',
             'items.product',
@@ -40,6 +46,8 @@ class OrderApiController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', Order::class);
+
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'warehouse_id' => 'required|exists:warehouses,id',
@@ -55,13 +63,18 @@ class OrderApiController extends Controller
 
     public function addItem(Request $request, Order $order)
     {
+        $this->authorize('update', $order);
+
         $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
 
         try {
-            $product = Product::findOrFail($validated['product_id']);
+            $product = Product::query()
+                ->where('company_id', app(CompanyContext::class)->id())
+                ->findOrFail($validated['product_id']);
+
             $item = $this->orderService->addItem(
                 $order,
                 $product,
@@ -85,6 +98,8 @@ class OrderApiController extends Controller
 
     public function updateItem(Request $request, OrderItem $item)
     {
+        $this->authorize('update', $item->order);
+
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
@@ -108,6 +123,8 @@ class OrderApiController extends Controller
 
     public function removeItem(OrderItem $item)
     {
+        $this->authorize('update', $item->order);
+
         try {
             $order = $item->order;
             $this->orderService->removeItem($item);
@@ -127,6 +144,8 @@ class OrderApiController extends Controller
 
     public function confirm(Order $order)
     {
+        $this->authorize('confirm', $order);
+
         try {
             $this->orderService->confirmOrder($order);
 
@@ -145,7 +164,10 @@ class OrderApiController extends Controller
 
     public function invoicable(Request $request)
     {
+        $this->authorize('viewAny', Order::class);
+
         $query = Order::with('customer')
+            ->where('company_id', app(CompanyContext::class)->id())
             ->where('status', 'shipped')
             ->doesntHave('invoice');
 
@@ -171,6 +193,8 @@ class OrderApiController extends Controller
 
     public function ship(Order $order)
     {
+        $this->authorize('ship', $order);
+
         try {
             $this->orderService->shipOrder($order);
 
@@ -189,6 +213,8 @@ class OrderApiController extends Controller
 
     public function complete(Order $order)
     {
+        $this->authorize('complete', $order);
+
         try {
             $this->orderService->completeOrder($order);
 
@@ -207,6 +233,8 @@ class OrderApiController extends Controller
 
     public function cancel(Order $order)
     {
+        $this->authorize('cancel', $order);
+
         try {
             $this->orderService->cancelOrder($order);
 
@@ -225,6 +253,9 @@ class OrderApiController extends Controller
 
     public function createInvoice(Request $request, Order $order)
     {
+        $this->authorize('view', $order);
+        abort_unless($request->user()->hasPermission('invoices.view'), 403);
+
         if ($order->status !== 'shipped') {
             return response()->json([
                 'error' => 'Order must be shipped before invoicing'

@@ -29,8 +29,22 @@
                             required
                             class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
                         >
+                            <option value="">Select customer</option>
+
+                            @foreach($customers as $customer)
+                                <option
+                                    value="{{ $customer->id }}"
+                                    {{ old('customer_id') == $customer->id ? 'selected' : '' }}
+                                >
+                                    {{ $customer->name }}{{ $customer->type ? ' (' . ucfirst($customer->type) . ')' : '' }}
+                                </option>
+                            @endforeach
 
                         </select>
+
+                        @error('customer_id')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
 
                     </div>
 

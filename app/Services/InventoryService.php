@@ -66,7 +66,7 @@ class InventoryService
             'company_id' => $order->company_id,
             'product_id' => $product->id,
             'order_id' => $orderId,
-            'warehouse_id' => $warehouseId, // 🔥 TO JE KLJUČNO
+            'warehouse_id' => $warehouseId,
             'quantity' => $quantity,
             'expires_at' => now()->addMinutes(30)
         ]);

@@ -33,7 +33,7 @@ class BalanceSheetService
                     $join->whereDate('journal_entries.posted_at', '<=', $dateTo);
                 }
             })
-            ->whereIn('accounts.type', ['asset', 'liability'])
+            ->whereIn('accounts.type', ['asset', 'liability', 'equity'])
             ->select([
                 'accounts.code',
                 'accounts.name',
@@ -67,15 +67,14 @@ class BalanceSheetService
 
         $assetAccounts = $accounts->where('type', 'asset')->values();
         $liabilityAccounts = $accounts->where('type', 'liability')->values();
-
-        $equityAccounts = collect([
+        $equityAccounts = $accounts->where('type', 'equity')->values()->push(
             [
                 'code' => 'CURRENT_EARNINGS',
                 'name' => 'Current Earnings',
                 'type' => 'equity',
                 'amount' => round((float) $profitSummary['net_profit'], 2),
             ],
-        ]);
+        );
 
         return [
             'asset_accounts' => $assetAccounts,

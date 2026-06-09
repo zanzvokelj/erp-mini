@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Company;
 use Tests\TestCase;
 use App\Models\Customer;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Services\ProductService;
@@ -176,5 +178,85 @@ class OrderApiTest extends TestCase
             'order_id' => $order->id,
             'type' => 'item_removed',
         ]);
+    }
+
+    public function test_order_api_index_returns_only_current_company_orders()
+    {
+        $this->actingAsUser('sales');
+
+        $ownOrder = Order::factory()->create();
+        $otherCompany = Company::create([
+            'name' => 'Second Company',
+            'slug' => 'second-company',
+            'is_active' => true,
+        ]);
+        Order::factory()->create([
+            'company_id' => $otherCompany->id,
+        ]);
+
+        $response = $this->getJson('/api/v1/orders');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+
+        $this->assertTrue($ids->contains($ownOrder->id));
+        $this->assertCount(1, $ids);
+    }
+
+    public function test_order_api_denies_access_to_foreign_company_order()
+    {
+        $user = $this->actingAsUser('sales');
+        $otherCompany = Company::create([
+            'name' => 'Foreign Company',
+            'slug' => 'foreign-company',
+            'is_active' => true,
+        ]);
+
+        $foreignOrder = Order::factory()->create([
+            'company_id' => $otherCompany->id,
+        ]);
+
+        $response = $this->getJson("/api/v1/orders/{$foreignOrder->id}");
+
+        $response->assertForbidden();
+        $this->assertNotEquals($user->company_id, $foreignOrder->company_id);
+    }
+
+    public function test_order_api_denies_mutating_foreign_company_order()
+    {
+        $this->actingAsUser('sales');
+
+        $ownWarehouse = Warehouse::factory()->create();
+        $otherCompany = Company::create([
+            'name' => 'External Company',
+            'slug' => 'external-company',
+            'is_active' => true,
+        ]);
+        $customer = Customer::factory()->create([
+            'company_id' => $otherCompany->id,
+        ]);
+        $foreignOrder = Order::factory()->create([
+            'company_id' => $otherCompany->id,
+            'customer_id' => $customer->id,
+            'warehouse_id' => Warehouse::factory()->create([
+                'company_id' => $otherCompany->id,
+            ])->id,
+        ]);
+        $ownProduct = Product::factory()->create();
+
+        app(ProductService::class)->adjustStock(
+            $ownProduct,
+            $ownWarehouse->id,
+            'in',
+            10,
+            'restock'
+        );
+
+        $response = $this->postJson("/api/v1/orders/{$foreignOrder->id}/items", [
+            'product_id' => $ownProduct->id,
+            'quantity' => 1,
+        ]);
+
+        $response->assertForbidden();
     }
 }

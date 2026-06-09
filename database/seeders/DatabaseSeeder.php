@@ -11,11 +11,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AccountingSeeder::class,
             WarehouseSeeder::class,
+            DemoUsersSeeder::class,
         ]);
-
-        if (filter_var(env('SEED_DEMO_USERS', false), FILTER_VALIDATE_BOOL)) {
-            $this->call(DemoUsersSeeder::class);
-        }
 
         if (filter_var(env('SEED_DEMO_DATA', false), FILTER_VALIDATE_BOOL)) {
             $this->call(ErpSimulationSeeder::class);

@@ -17,48 +17,48 @@ class ProductFactory extends Factory
                 'prefix' => 'MON',
                 'brands' => ['Dell', 'LG', 'Samsung', 'AOC'],
                 'names' => ['24" IPS Monitor', '27" QHD Monitor', '34" Ultrawide Monitor'],
-                'cost_range' => [95, 420],
+                'cost_range' => [85, 260],
                 'min_stock' => [4, 18],
             ],
             [
                 'prefix' => 'LAP',
                 'brands' => ['Lenovo', 'HP', 'Dell', 'Acer'],
                 'names' => ['Business Laptop 14"', 'Ultrabook 13"', 'Performance Laptop 15"'],
-                'cost_range' => [420, 1250],
+                'cost_range' => [480, 980],
                 'min_stock' => [2, 10],
             ],
             [
                 'prefix' => 'ACC',
                 'brands' => ['Logitech', 'Anker', 'Belkin', 'Baseus'],
                 'names' => ['Wireless Mouse', 'Mechanical Keyboard', 'USB-C Dock', 'Wireless Charger', 'USB Hub'],
-                'cost_range' => [12, 130],
+                'cost_range' => [10, 95],
                 'min_stock' => [10, 40],
             ],
             [
                 'prefix' => 'ERG',
                 'brands' => ['ErgoPro', 'FlexiWork', 'Workline'],
                 'names' => ['Office Chair', 'Standing Desk', 'Monitor Arm', 'Foot Rest'],
-                'cost_range' => [35, 390],
+                'cost_range' => [40, 280],
                 'min_stock' => [3, 16],
             ],
             [
                 'prefix' => 'STO',
                 'brands' => ['Samsung', 'Kingston', 'SanDisk', 'WD'],
                 'names' => ['Portable SSD 1TB', 'External SSD 2TB', 'USB Backup Drive 4TB'],
-                'cost_range' => [55, 260],
+                'cost_range' => [50, 180],
                 'min_stock' => [4, 20],
             ],
             [
                 'prefix' => 'NET',
                 'brands' => ['TP-Link', 'Ubiquiti', 'Netgear'],
                 'names' => ['Wi-Fi 6 Router', '24-Port Switch', 'Access Point'],
-                'cost_range' => [45, 320],
+                'cost_range' => [55, 220],
                 'min_stock' => [3, 14],
             ],
         ]);
 
         $cost = fake()->randomFloat(2, $catalog['cost_range'][0], $catalog['cost_range'][1]);
-        $markup = fake()->randomFloat(2, 1.22, 1.58);
+        $markup = fake()->randomFloat(2, 1.43, 1.67);
         $price = round($cost * $markup, 2);
         $brand = fake()->randomElement($catalog['brands']);
         $name = $brand . ' ' . fake()->randomElement($catalog['names']);

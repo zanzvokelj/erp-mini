@@ -4,12 +4,11 @@ namespace App\Services;
 
 use App\Accounting\AccountingEntryTypes;
 use App\Accounting\PostingMap;
-use App\Models\Account;
 use App\Models\Invoice;
 use App\Models\JournalEntry;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
-use App\Models\Order;
 use App\Models\SupplierPayment;
 
 class AccountingService
@@ -162,6 +161,51 @@ class AccountingService
                 ],
             ]
         );
+    }
+
+    public function reverseOrderReturn(Order $order): void
+    {
+        $order->loadMissing(['invoice.payments']);
+
+        if ($order->invoice) {
+            $paymentEntries = JournalEntry::query()
+                ->where('company_id', $order->company_id)
+                ->where('entry_type', AccountingEntryTypes::PAYMENT_RECEIVED)
+                ->where('reference_type', Payment::class)
+                ->whereIn('reference_id', $order->invoice->payments->pluck('id'))
+                ->with(['lines.account', 'reversalEntry'])
+                ->get();
+
+            foreach ($paymentEntries as $entry) {
+                if (! $entry->reversalEntry) {
+                    $this->ledgerService->reverse($entry, auth()->user(), now());
+                }
+            }
+
+            $invoiceEntry = JournalEntry::query()
+                ->where('company_id', $order->company_id)
+                ->where('entry_type', AccountingEntryTypes::INVOICE_ISSUED)
+                ->where('reference_type', Invoice::class)
+                ->where('reference_id', $order->invoice->id)
+                ->with(['lines.account', 'reversalEntry'])
+                ->first();
+
+            if ($invoiceEntry && ! $invoiceEntry->reversalEntry) {
+                $this->ledgerService->reverse($invoiceEntry, auth()->user(), now());
+            }
+        }
+
+        $cogsEntry = JournalEntry::query()
+            ->where('company_id', $order->company_id)
+            ->where('entry_type', AccountingEntryTypes::COST_OF_GOODS_SOLD)
+            ->where('reference_type', Order::class)
+            ->where('reference_id', $order->id)
+            ->with(['lines.account', 'reversalEntry'])
+            ->first();
+
+        if ($cogsEntry && ! $cogsEntry->reversalEntry) {
+            $this->ledgerService->reverse($cogsEntry, auth()->user(), now());
+        }
     }
 
     protected function recordEntry(
