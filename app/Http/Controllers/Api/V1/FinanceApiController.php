@@ -29,7 +29,6 @@ class FinanceApiController extends Controller
     {
         $companyId = app(CompanyContext::class)->id();
 
-        // 💰 TOTAL REVENUE
         $revenue = Invoice::where('company_id', $companyId)
             ->where('status', 'paid')
             ->sum('total');
@@ -39,7 +38,6 @@ class FinanceApiController extends Controller
             ->withSum('payments', 'amount')
             ->whereNotIn('status', ['paid', 'cancelled']);
 
-        // ⏳ OUTSTANDING
         $outstanding = (clone $openInvoices)
             ->get(['id', 'total'])
             ->sum(function (Invoice $invoice) {
@@ -48,7 +46,6 @@ class FinanceApiController extends Controller
                 return max((float) $invoice->total - $paid, 0);
             });
 
-        // 🔴 OVERDUE (SUM)
         $overdue = (clone $openInvoices)
             ->whereNotNull('due_date')
             ->where('due_date', '<', now())
@@ -59,14 +56,12 @@ class FinanceApiController extends Controller
                 return max((float) $invoice->total - $paid, 0);
             });
 
-        // 📈 THIS MONTH
         $thisMonth = Invoice::where('company_id', $companyId)
             ->where('status', 'paid')
             ->whereMonth('paid_at', now()->month)
             ->whereYear('paid_at', now()->year)
             ->sum('total');
 
-        // 🔥 OVERDUE LIST
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
 
         $overdueInvoices = Invoice::with('customer')

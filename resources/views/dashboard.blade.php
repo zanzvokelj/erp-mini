@@ -23,17 +23,17 @@
         <div class="grid grid-cols-5 gap-6">
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <p class="text-xs text-gray-500">Revenue</p>
+                <p class="text-xs text-gray-500">Recognized Revenue</p>
                 <p class="text-xl font-semibold text-gray-900">€{{ number_format($revenue, 2) }}</p>
             </div>
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <p class="text-xs text-gray-500">Orders</p>
+                <p class="text-xs text-gray-500">Invoiced Orders</p>
                 <p class="text-xl font-semibold text-gray-900">{{ number_format($ordersCount) }}</p>
             </div>
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <p class="text-xs text-gray-500">Avg Order Value</p>
+                <p class="text-xs text-gray-500">Avg Invoice Value</p>
                 <p class="text-xl font-semibold text-gray-900">€{{ number_format($avgOrderValue, 2) }}</p>
             </div>
 
@@ -50,7 +50,7 @@
             </div>
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <p class="text-xs text-gray-500">Paid For Inventory</p>
+                <p class="text-xs text-gray-500">Supplier Payments</p>
                 <p class="text-xl font-semibold text-gray-900">
                     €{{ number_format($paidForInventory, 2) }}
                 </p>
@@ -64,7 +64,7 @@
             </div>
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <p class="text-xs text-gray-500">Revenue Today</p>
+                <p class="text-xs text-gray-500">Revenue Posted Today</p>
                 <p class="text-xl font-semibold text-gray-900">
                     €{{ number_format($revenueToday, 2) }}
                 </p>
@@ -79,7 +79,7 @@
             </div>
 
             <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <p class="text-xs text-gray-500">Profit</p>
+                <p class="text-xs text-gray-500">Net Profit</p>
                 <p class="text-xl font-semibold text-green-600">
                     €{{ number_format($totalProfit, 2) }}
                 </p>
@@ -93,7 +93,7 @@
 
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-sm font-semibold text-gray-700">
-                    Revenue (Last 6 Months)
+                    Recognized Revenue (Last 6 Months)
                 </h2>
             </div>
 

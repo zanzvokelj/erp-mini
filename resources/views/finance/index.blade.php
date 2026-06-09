@@ -61,28 +61,27 @@
         <div class="grid grid-cols-4 gap-6">
 
             <div class="bg-white p-6 rounded-xl shadow border">
-                <p class="text-sm text-gray-500">Revenue</p>
+                <p class="text-sm text-gray-500">Cash Collected</p>
                 <p id="revenue" class="text-2xl font-semibold">€0</p>
             </div>
 
             <div class="bg-white p-6 rounded-xl shadow border">
-                <p class="text-sm text-gray-500">Outstanding</p>
+                <p class="text-sm text-gray-500">Outstanding Receivables</p>
                 <p id="outstanding" class="text-2xl font-semibold text-yellow-600">€0</p>
             </div>
 
             <div class="bg-white p-6 rounded-xl shadow border">
-                <p class="text-sm text-gray-500">Overdue</p>
+                <p class="text-sm text-gray-500">Overdue Receivables</p>
                 <p id="overdue" class="text-2xl font-semibold text-red-600">€0</p>
             </div>
 
             <div class="bg-white p-6 rounded-xl shadow border">
-                <p class="text-sm text-gray-500">This Month</p>
+                <p class="text-sm text-gray-500">Cash Collected This Month</p>
                 <p id="thisMonth" class="text-2xl font-semibold text-green-600">€0</p>
             </div>
 
         </div>
 
-        <!-- 🔥 OVERDUE TABLE -->
         <div class="bg-white rounded-xl shadow border">
 
             <div class="p-4 border-b font-medium">
@@ -155,7 +154,6 @@
             const res = await fetch(`/api/v1/finance/overview?page=${page}&per_page=${overduePerPage}`);
             const data = await res.json();
 
-            // KPI
             document.getElementById('revenue').innerText =
                 formatMoney(data.revenue);
 
@@ -168,7 +166,6 @@
             document.getElementById('thisMonth').innerText =
                 formatMoney(data.this_month);
 
-            // 🔥 TABLE RENDER
             const table = document.getElementById('overdueTable');
             const pagination = data.overdue_pagination ?? {};
             const summary = document.getElementById('overduePaginationSummary');

@@ -287,8 +287,6 @@ class OrderService
 
             $this->logActivity($order, 'confirmed', 'Order confirmed');
 
-            \Log::info("Dispatching OrderConfirmed event {$order->id}");
-
             event(new OrderConfirmed($order));
         });
     }
@@ -351,7 +349,6 @@ class OrderService
     {
         $order = Order::query()->findOrFail($order->id);
 
-        \Log::info('SHIP ORDER CALLED ' . $order->id);
         if ($order->status !== 'confirmed') {
             throw new \Exception('Only confirmed orders can be shipped.');
         }
@@ -383,7 +380,6 @@ class OrderService
 
             }
 
-// remove reservation
             $this->inventoryService->releaseReservation($order->id);
 
             $order->update([
@@ -395,8 +391,6 @@ class OrderService
                 'shipped',
                 'Order shipped and inventory deducted'
             );
-
-            \Log::info("Dispatching OrderShipped event {$order->id}");
 
             event(new OrderShipped($order));
 
@@ -417,7 +411,7 @@ class OrderService
 
         DB::transaction(function () use ($order) {
             $order = Order::query()
-                ->with(['items.product', 'warehouse'])
+                ->with(['items.product', 'warehouse', 'invoice.payments'])
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
@@ -436,6 +430,15 @@ class OrderService
                     $order->id
                 );
 
+            }
+
+            $this->accountingService->reverseOrderReturn($order);
+
+            if ($order->invoice) {
+                $order->invoice->update([
+                    'status' => 'cancelled',
+                    'paid_at' => null,
+                ]);
             }
 
             $order->update([

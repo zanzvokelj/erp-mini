@@ -33,7 +33,6 @@ class TransferService
             $fromWarehouseModel = Warehouse::query()->findOrFail($fromWarehouse);
             $toWarehouseModel = Warehouse::query()->findOrFail($toWarehouse);
 
-            // 🔒 LOCK PRODUCT
             $product = Product::where('id', $product->id)
                 ->lockForUpdate()
                 ->first();
@@ -43,7 +42,6 @@ class TransferService
                 'Transfer entities must belong to the same company.'
             );
 
-            // ✅ AVAILABLE (correct logic)
             $available = app(\App\Services\InventoryService::class)
                 ->availableStock($product, $fromWarehouse);
 
@@ -51,7 +49,6 @@ class TransferService
                 throw new \Exception('Not enough available stock in source warehouse.');
             }
 
-            // 📦 CREATE TRANSFER FIRST
             $transfer = WarehouseTransfer::create([
                 'product_id' => $product->id,
                 'from_warehouse_id' => $fromWarehouse,
@@ -59,7 +56,6 @@ class TransferService
                 'quantity' => $quantity
             ]);
 
-            // ⬇ OUT
             $this->productService->adjustStock(
                 $product,
                 $fromWarehouse,
@@ -69,7 +65,6 @@ class TransferService
                 $transfer->id
             );
 
-            // ⬆ IN
             $this->productService->adjustStock(
                 $product,
                 $toWarehouse,

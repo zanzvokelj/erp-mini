@@ -32,10 +32,13 @@ class InvoicePaymentService
             );
 
             $totalPaid = (float) $invoice->payments->sum('amount');
+            $remaining = round(max((float) $invoice->total - $totalPaid, 0), 2);
 
-            if (($totalPaid + $amount) > (float) $invoice->total) {
+            if (($amount - $remaining) > 0.01) {
                 throw new \DomainException('Payment exceeds invoice total');
             }
+
+            $amount = min(round($amount, 2), $remaining);
 
             $payment = Payment::create([
                 'company_id' => $invoice->company_id,
@@ -46,7 +49,7 @@ class InvoicePaymentService
             ]);
 
             $newTotalPaid = $totalPaid + $amount;
-            $remaining = (float) $invoice->total - $newTotalPaid;
+            $remaining = round((float) $invoice->total - $newTotalPaid, 2);
 
             OrderActivity::create([
                 'order_id' => $invoice->order_id,

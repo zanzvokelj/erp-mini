@@ -10,25 +10,39 @@ class DemoUsersSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
-            ['email' => 'admin@admin.com'],
+        $users = [
             [
+                'email' => 'admin@admin.com',
                 'name' => 'Admin',
-                'password' => Hash::make('password'),
                 'role' => 'admin',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'sadmin@sadmin.com'],
+            ],
             [
+                'email' => 'sadmin@sadmin.com',
                 'name' => 'Super Admin',
-                'password' => Hash::make('password'),
                 'role' => 'admin',
-                'email_verified_at' => now(),
-            ]
-        );
+            ],
+            [
+                'email' => 'sales@example.com',
+                'name' => 'Sales User',
+                'role' => 'sales',
+            ],
+            [
+                'email' => 'finance@example.com',
+                'name' => 'Finance User',
+                'role' => 'finance',
+            ],
+        ];
 
+        foreach ($users as $user) {
+            User::updateOrCreate(
+                ['email' => $user['email']],
+                [
+                    'name' => $user['name'],
+                    'password' => Hash::make('password'),
+                    'role' => $user['role'],
+                    'email_verified_at' => now(),
+                ]
+            );
+        }
     }
 }

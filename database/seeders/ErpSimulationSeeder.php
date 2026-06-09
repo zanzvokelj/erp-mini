@@ -23,14 +23,12 @@ use Illuminate\Support\Facades\Queue;
 
 class ErpSimulationSeeder extends Seeder
 {
-    private const SIMULATION_START = '2026-01-01 08:00:00';
-    private const SIMULATION_END = '2026-03-27 18:00:00';
-    private const SUPPLIER_COUNT = 18;
-    private const CUSTOMER_COUNT = 240;
-    private const PRODUCT_COUNT = 144;
-    private const PURCHASE_ORDER_COUNT = 110;
-    private const TRANSFER_COUNT = 90;
-    private const SALES_ORDER_COUNT = 1250;
+    private const SUPPLIER_COUNT = 10;
+    private const CUSTOMER_COUNT = 80;
+    private const PRODUCT_COUNT = 54;
+    private const PURCHASE_ORDER_COUNT = 32;
+    private const TRANSFER_COUNT = 24;
+    private const SALES_ORDER_COUNT = 260;
 
     protected Collection $suppliers;
     protected Collection $customers;
@@ -42,10 +40,14 @@ class ErpSimulationSeeder extends Seeder
     protected Collection $topSellers;
     protected Collection $productsBySupplier;
     protected array $weightedPoolByWarehouse = [];
+    protected Carbon $simulationStartAt;
+    protected Carbon $simulationEndAt;
 
     public function run(): void
     {
         Queue::fake();
+        $this->simulationStartAt = now()->copy()->subMonths(8)->startOfMonth()->setTime(8, 0);
+        $this->simulationEndAt = now()->copy()->subDay()->setTime(18, 0);
 
         $this->seedCoreData();
         $this->buildCatalogSegments();
@@ -60,12 +62,12 @@ class ErpSimulationSeeder extends Seeder
 
     protected function simulationStart(): Carbon
     {
-        return Carbon::parse(self::SIMULATION_START);
+        return $this->simulationStartAt->copy();
     }
 
     protected function simulationEnd(): Carbon
     {
-        return Carbon::parse(self::SIMULATION_END);
+        return $this->simulationEndAt->copy();
     }
 
     protected function seedCoreData(): void
@@ -114,7 +116,7 @@ class ErpSimulationSeeder extends Seeder
                 'product_id' => $product->id,
                 'warehouse_id' => $this->mainWarehouse->id,
                 'type' => 'in',
-                'quantity' => $isTopSeller ? fake()->numberBetween(80, 180) : fake()->numberBetween(25, 90),
+                'quantity' => $isTopSeller ? fake()->numberBetween(30, 90) : fake()->numberBetween(12, 45),
                 'reference_type' => 'opening_balance',
                 'reference_id' => null,
             ]);
@@ -124,7 +126,7 @@ class ErpSimulationSeeder extends Seeder
                     'product_id' => $product->id,
                     'warehouse_id' => $this->secondaryWarehouse->id,
                     'type' => 'in',
-                    'quantity' => $isTopSeller ? fake()->numberBetween(18, 65) : fake()->numberBetween(6, 30),
+                    'quantity' => $isTopSeller ? fake()->numberBetween(8, 28) : fake()->numberBetween(3, 14),
                     'reference_type' => 'opening_balance',
                     'reference_id' => null,
                 ]);
@@ -169,8 +171,8 @@ class ErpSimulationSeeder extends Seeder
 
             foreach ($items as $product) {
                 $quantity = $warehouse->is($this->mainWarehouse)
-                    ? ($this->topSellers->contains('id', $product->id) ? fake()->numberBetween(18, 55) : fake()->numberBetween(8, 28))
-                    : ($this->topSellers->contains('id', $product->id) ? fake()->numberBetween(8, 24) : fake()->numberBetween(4, 16));
+                    ? ($this->topSellers->contains('id', $product->id) ? fake()->numberBetween(8, 24) : fake()->numberBetween(4, 14))
+                    : ($this->topSellers->contains('id', $product->id) ? fake()->numberBetween(4, 12) : fake()->numberBetween(2, 8));
 
                 $costPrice = round((float) $product->cost_price * fake()->randomFloat(2, 0.97, 1.04), 2);
                 $subtotal += $quantity * $costPrice;
@@ -369,7 +371,7 @@ class ErpSimulationSeeder extends Seeder
             ->get();
 
         $futureDueInvoices = $openInvoices
-            ->take(24)
+            ->take(10)
             ->values();
 
         foreach ($futureDueInvoices as $index => $invoice) {
@@ -389,11 +391,11 @@ class ErpSimulationSeeder extends Seeder
 
         $thisMonthTargets = $openInvoices
             ->reject(fn (Invoice $invoice) => in_array($invoice->id, $protectedIds, true))
-            ->take(28)
+            ->take(12)
             ->values();
 
         foreach ($thisMonthTargets as $index => $invoice) {
-            $openAmount = round((float) $invoice->total - (float) ($invoice->payments_sum_amount ?? 0), 2);
+            $openAmount = $this->currentOpenAmount($invoice);
 
             if ($openAmount <= 0) {
                 continue;
@@ -414,7 +416,7 @@ class ErpSimulationSeeder extends Seeder
             Carbon::setTestNow($paymentDate);
 
             $invoicePaymentService->recordPayment(
-                $invoice,
+                $invoice->fresh(),
                 $openAmount,
                 fake()->randomElement(['bank_transfer', 'card'])
             );
@@ -426,7 +428,7 @@ class ErpSimulationSeeder extends Seeder
             ->orderBy('issued_at')
             ->get();
 
-        $targetOutstanding = 650000.00;
+        $targetOutstanding = 45000.00;
         $currentOutstanding = $remainingOpenInvoices->sum(function (Invoice $invoice) {
             return max((float) $invoice->total - (float) ($invoice->payments_sum_amount ?? 0), 0);
         });
@@ -440,7 +442,7 @@ class ErpSimulationSeeder extends Seeder
                 continue;
             }
 
-            $openAmount = round((float) $invoice->total - (float) ($invoice->payments_sum_amount ?? 0), 2);
+            $openAmount = $this->currentOpenAmount($invoice);
 
             if ($openAmount <= 0) {
                 continue;
@@ -457,7 +459,7 @@ class ErpSimulationSeeder extends Seeder
             Carbon::setTestNow($paymentDate);
 
             $invoicePaymentService->recordPayment(
-                $invoice,
+                $invoice->fresh(),
                 $openAmount,
                 fake()->randomElement(['bank_transfer', 'card'])
             );
@@ -664,5 +666,18 @@ class ErpSimulationSeeder extends Seeder
         }
 
         return $date;
+    }
+
+    protected function currentOpenAmount(Invoice $invoice): float
+    {
+        $freshInvoice = $invoice->fresh();
+
+        if (! $freshInvoice) {
+            return 0;
+        }
+
+        $paid = (float) $freshInvoice->payments()->sum('amount');
+
+        return round(max((float) $freshInvoice->total - $paid, 0), 2);
     }
 }
