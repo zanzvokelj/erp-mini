@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Accounting\AccountingEntryTypes;
+use App\Accounting\PostingMap;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Product;
@@ -13,6 +15,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseTransfer;
 use App\Services\InvoiceService;
 use App\Services\InvoicePaymentService;
+use App\Services\LedgerService;
 use App\Services\OrderService;
 use App\Services\ProductService;
 use App\Services\PurchaseOrderService;
@@ -132,6 +135,43 @@ class ErpSimulationSeeder extends Seeder
                 ]);
             }
         }
+
+        $this->postOpeningInventoryBalance($openingDate);
+    }
+
+    protected function postOpeningInventoryBalance(Carbon $openingDate): void
+    {
+        $openingInventoryValue = (float) StockMovement::query()
+            ->join('products', 'stock_movements.product_id', '=', 'products.id')
+            ->where('stock_movements.company_id', $this->mainWarehouse->company_id)
+            ->where('products.company_id', $this->mainWarehouse->company_id)
+            ->where('stock_movements.reference_type', 'opening_balance')
+            ->selectRaw('COALESCE(SUM(stock_movements.quantity * products.cost_price), 0) as value')
+            ->value('value');
+
+        if ($openingInventoryValue <= 0) {
+            return;
+        }
+
+        app(LedgerService::class)->post(
+            entryType: AccountingEntryTypes::OPENING_INVENTORY,
+            referenceType: 'opening_balance',
+            referenceId: 1,
+            description: 'Opening inventory balance',
+            postedAt: $openingDate,
+            lines: [
+                [
+                    'account_code' => PostingMap::INVENTORY_ASSET,
+                    'debit' => round($openingInventoryValue, 2),
+                    'credit' => 0,
+                ],
+                [
+                    'account_code' => PostingMap::OPENING_BALANCE_EQUITY,
+                    'debit' => 0,
+                    'credit' => round($openingInventoryValue, 2),
+                ],
+            ]
+        );
     }
 
     protected function seedPurchaseFlow(): void

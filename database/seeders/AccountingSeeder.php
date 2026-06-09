@@ -16,6 +16,7 @@ class AccountingSeeder extends Seeder
             ['code' => '1300', 'name' => 'Input VAT Receivable', 'type' => 'asset', 'category' => 'current_asset', 'subtype' => 'vat_receivable'],
             ['code' => '2000', 'name' => 'Accounts Payable', 'type' => 'liability', 'category' => 'current_liability', 'subtype' => 'trade_payables'],
             ['code' => '2100', 'name' => 'Output VAT Payable', 'type' => 'liability', 'category' => 'current_liability', 'subtype' => 'vat_payable'],
+            ['code' => '3000', 'name' => 'Opening Balance Equity', 'type' => 'equity', 'category' => 'opening_balance', 'subtype' => 'opening_equity'],
             ['code' => '4000', 'name' => 'Sales Revenue', 'type' => 'revenue', 'category' => 'operating_revenue', 'subtype' => 'product_sales'],
             ['code' => '5000', 'name' => 'Cost of Goods Sold', 'type' => 'expense', 'category' => 'cost_of_sales', 'subtype' => 'inventory_cost'],
         ];
